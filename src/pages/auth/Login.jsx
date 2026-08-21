@@ -1,7 +1,13 @@
 import React from 'react';
-import { Mail, Lock, MessageSquare } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Mail, Lock, CheckCircle2, MessageSquare } from 'lucide-react';
+
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation(); // <-- ADD THIS LINE
+
+  const isVerified = location.state?.verified;
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
       
@@ -35,6 +41,17 @@ const LoginPage = () => {
             <h2 className="text-2xl font-bold mb-1">WELCOME BACK</h2>
             <p className="text-neutral-400 text-sm">Sign in to your account to continue</p>
           </div>
+
+          {/* <-- ADD THIS GREEN SUCCESS BANNER --> */}
+          {isVerified && (
+            <div className="mb-6 flex items-start gap-3 p-4 bg-[#0a2e16] border border-[#166534] rounded-xl text-[#22c55e]">
+              <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <p className="text-sm font-medium">
+                Account verified successfully! You can now sign in.
+              </p>
+            </div>
+          )}
+          {/* <------------------------------------> */}
 
           <form className="space-y-6">
             
@@ -97,9 +114,9 @@ const LoginPage = () => {
           {/* Registration Link (Red link) */}
           <div className="mt-10 text-center text-sm text-neutral-400">
             Don't have an account?{' '}
-            <a href="/register" className="text-red-600 hover:text-red-500 font-medium transition-colors">
+            <Link to="/register" className="text-red-600 hover:text-red-500 font-medium transition-colors">
               Register now
-            </a>
+            </Link>
           </div>
 
         </div>

@@ -1,5 +1,8 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import VerifyOtp from './pages/auth/VerifyOtp';
+
+//import { BrowserRouter as Router, Routes, Route, BrowserRouter } from 'react-router-dom';
 
 // Import your page components
 import LoginPage from './pages/auth/Login';
@@ -11,17 +14,18 @@ import ForgotPasswordPage from './pages/auth/ForgotPassword';
 
 function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         {/* Authentication Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
         
         {/* Default Route (Can be your Landing Page later) */}
         <Route path="/" element={<LoginPage />} /> 
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 

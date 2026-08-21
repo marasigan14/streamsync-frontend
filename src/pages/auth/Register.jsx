@@ -1,7 +1,65 @@
-import React from 'react';
-import { User, Mail, Phone, Building, Lock } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // <-- ADD THIS LINE
+import { User, Mail, Phone, Building } from 'lucide-react';
+import { supabase } from '../../supabaseClient';
 
 const RegisterPage = () => {
+  const navigate = useNavigate(); // <-- ADD THIS LINE
+  // 1. Setup state for our form inputs
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    company: '',
+    role: 'Client',
+    password: '',
+    confirmPassword: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  // 2. Handle input changes
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // 3. Handle form submission
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      setMessage("Passwords do not match!");
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    // Send data to Supabase
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          company: formData.company,
+          role: formData.role
+        }
+      }
+    });
+
+    if (error) {
+      setMessage(error.message);
+    } else {
+      // <-- REPLACE THE OLD SUCCESS MESSAGE WITH THIS:
+      navigate('/verify-otp', { state: { email: formData.email } });
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
       
@@ -37,7 +95,8 @@ const RegisterPage = () => {
             <p className="text-neutral-400 text-sm">Join Livestream Manila today</p>
           </div>
 
-          <form className="space-y-5">
+          {/* Form hooked up to handleRegister */}
+          <form onSubmit={handleRegister} className="space-y-5">
             
             {/* Grid for First & Last Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -45,14 +104,30 @@ const RegisterPage = () => {
                 <label className="text-xs font-medium text-neutral-300">First Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input type="text" placeholder="Juan" className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                  <input 
+                    type="text" 
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    placeholder="Juan" 
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                    required 
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Last Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input type="text" placeholder="Dela Cruz" className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                  <input 
+                    type="text" 
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    placeholder="Dela Cruz" 
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                    required 
+                  />
                 </div>
               </div>
             </div>
@@ -62,7 +137,15 @@ const RegisterPage = () => {
               <label className="text-xs font-medium text-neutral-300">Active Email Address <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input type="email" placeholder="juandelacruz@example.com" className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                <input 
+                  type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="juandelacruz@example.com" 
+                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                  required 
+                />
               </div>
             </div>
 
@@ -71,7 +154,15 @@ const RegisterPage = () => {
               <label className="text-xs font-medium text-neutral-300">Active Phone Number <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input type="tel" placeholder="+63 912 345 6789" className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                <input 
+                  type="tel" 
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="+63 912 345 6789" 
+                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                  required 
+                />
               </div>
             </div>
 
@@ -81,17 +172,28 @@ const RegisterPage = () => {
                 <label className="text-xs font-medium text-neutral-300">Company <span className="text-neutral-500">(Optional)</span></label>
                 <div className="relative">
                   <Building className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input type="text" placeholder="Your Company" className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" />
+                  <input 
+                    type="text" 
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    placeholder="Your Company" 
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Role <span className="text-neutral-500">(Optional)</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <select className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-neutral-400 appearance-none">
-                    <option>Select Role</option>
-                    <option>Client</option>
-                    <option>Event Manager</option>
+                  <select 
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-neutral-400 appearance-none"
+                  >
+                    <option value="Client">Client</option>
+                    <option value="Event Manager">Event Manager</option>
                   </select>
                 </div>
               </div>
@@ -101,11 +203,27 @@ const RegisterPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Password <span className="text-red-500">*</span></label>
-                <input type="password" placeholder="Create password" className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                <input 
+                  type="password" 
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Create password" 
+                  className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                  required 
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Confirm Password <span className="text-red-500">*</span></label>
-                <input type="password" placeholder="Confirm password" className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" required />
+                <input 
+                  type="password" 
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm password" 
+                  className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
+                  required 
+                />
               </div>
             </div>
 
@@ -120,9 +238,20 @@ const RegisterPage = () => {
               </div>
             </div>
 
+            {/* Dynamic Message Box */}
+            {message && (
+              <div className={`text-sm text-center font-medium p-3 rounded-xl border ${message.includes('Success') ? 'bg-green-900/20 border-green-600/50 text-green-400' : 'bg-red-900/20 border-red-600/50 text-red-500'}`}>
+                {message}
+              </div>
+            )}
+
             {/* Submit Button */}
-            <button type="submit" className="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 mt-4 text-sm tracking-wide">
-              CREATE ACCOUNT
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 mt-4 text-sm tracking-wide disabled:opacity-50"
+            >
+              {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
             </button>
 
           </form>
