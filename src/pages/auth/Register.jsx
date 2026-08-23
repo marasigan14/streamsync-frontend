@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // <-- ADD THIS LINE
-import { User, Mail, Phone, Building } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom'; 
+import { User, Mail, Phone, Building, Check, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
 const RegisterPage = () => {
-  const navigate = useNavigate(); // <-- ADD THIS LINE
+  const navigate = useNavigate();
+  
   // 1. Setup state for our form inputs
   const [formData, setFormData] = useState({
     firstName: '',
@@ -16,6 +17,7 @@ const RegisterPage = () => {
     password: '',
     confirmPassword: ''
   });
+  
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -53,10 +55,20 @@ const RegisterPage = () => {
 
     if (error) {
       setMessage(error.message);
-    } else {
-      // <-- REPLACE THE OLD SUCCESS MESSAGE WITH THIS:
-      navigate('/verify-otp', { state: { email: formData.email } });
+      setLoading(false);
+      return;
     }
+
+    // THIS IS THE MAGIC FIX FOR TC-M01-004
+    // If user exists, Supabase returns an empty identities array instead of an error
+    if (data?.user?.identities && data.user.identities.length === 0) {
+      setMessage("An account with this email address already exists. Please log in or use a different email.");
+      setLoading(false);
+      return; // This stops the redirect!
+    }
+
+    // Only navigate if it's a truly new account
+    navigate('/verify-otp', { state: { email: formData.email } });
     setLoading(false);
   };
 
@@ -66,7 +78,6 @@ const RegisterPage = () => {
       {/* --- LEFT SIDE: Branding and Image Collage --- */}
       <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        // Ensure you have a 'hero.png' in your assets folder
         style={{ backgroundImage: "url('/src/assets/hero.png')" }} 
       >
         <div className="absolute inset-0 bg-black/60"></div>
@@ -97,7 +108,7 @@ const RegisterPage = () => {
 
           {/* Form hooked up to handleRegister */}
           <form onSubmit={handleRegister} className="space-y-5">
-            
+
             {/* Grid for First & Last Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
@@ -201,6 +212,8 @@ const RegisterPage = () => {
 
             {/* Grid for Passwords */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              {/* Main Pass Field */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Password <span className="text-red-500">*</span></label>
                 <input 
@@ -212,7 +225,27 @@ const RegisterPage = () => {
                   className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
                   required 
                 />
+                
+                {/* Dynamic Password Feedback (Appears when typing) */}
+                {formData.password && (
+                  <div className="mt-3 p-3 bg-[#0a0a0a] rounded-xl border border-neutral-800/50 space-y-2">
+                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-2">Password Requirements</p>
+                    {[
+                      { label: 'At least 6 characters', valid: formData.password.length >= 6 },
+                      { label: 'Uppercase & lowercase letters', valid: /[A-Z]/.test(formData.password) && /[a-z]/.test(formData.password) },
+                      { label: 'At least one number', valid: /[0-9]/.test(formData.password) },
+                      { label: 'At least one symbol (e.g., @$!%*)', valid: /[^A-Za-z0-9]/.test(formData.password) }
+                    ].map((req, i) => (
+                      <div key={i} className={`flex items-center text-[11px] font-medium transition-colors duration-300 ${req.valid ? 'text-green-500' : 'text-neutral-500'}`}>
+                        {req.valid ? <Check className="w-3.5 h-3.5 mr-2" /> : <X className="w-3.5 h-3.5 mr-2" />}
+                        {req.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Confirm Password Field */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Confirm Password <span className="text-red-500">*</span></label>
                 <input 
@@ -224,6 +257,17 @@ const RegisterPage = () => {
                   className="w-full px-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
                   required 
                 />
+
+                {/* Dynamic Match Feedback */}
+                {formData.confirmPassword && (
+                  <div className={`mt-3 flex items-center text-xs font-medium ${formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
+                    {formData.password === formData.confirmPassword ? (
+                      <><Check className="w-4 h-4 mr-1.5" /> Passwords match</>
+                    ) : (
+                      <><X className="w-4 h-4 mr-1.5" /> Passwords do not match</>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -259,7 +303,7 @@ const RegisterPage = () => {
           {/* Login Link */}
           <div className="mt-8 text-center text-xs text-neutral-400">
             Already have an account?{' '}
-            <a href="/login" className="text-red-600 hover:text-red-500 font-medium transition-colors">Sign In</a>
+            <Link to="/login" className="text-red-600 hover:text-red-500 font-medium transition-colors">Sign In</Link>
           </div>
 
         </div>

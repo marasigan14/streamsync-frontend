@@ -1,26 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react'; // <-- ADDED useState
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, CheckCircle2, MessageSquare } from 'lucide-react';
+import { supabase } from '../../supabaseClient'; // <-- ADDED supabase import
 
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // <-- ADD THIS LINE
+  const location = useLocation();
 
   const isVerified = location.state?.verified;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage('');
+
+    // Satisfies TC-M01-005 & TC-M01-006: Authentication Check
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      // Satisfies TC-M01-006 (Wrong Password) & TC-M01-007 (Unverified Email)
+      setErrorMessage(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Satisfies TC-M01-008 & TC-M01-009: Role-Based Routing
+    const userRole = data.user?.user_metadata?.role || 'client';
+    
+    if (userRole === 'admin') {
+      navigate('/admin/dashboard');
+    } else if (userRole === 'staff') {
+      navigate('/staff/dashboard');
+    } else {
+      navigate('/client/dashboard');
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
       
-      {/* --- LEFT SIDE: Branding and Image Collage (Visible on lg+ screens) --- */}
+      {/* --- LEFT SIDE: Branding and Image Collage --- */}
       <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        // Ensure you have a 'hero.png' in your assets folder
         style={{ backgroundImage: "url('/src/assets/hero.png')" }} 
       >
-        {/* Dark Gradient Overlay for text readability */}
         <div className="absolute inset-0 bg-black/60"></div>
-        
-        {/* Branding Elements (Matches bottom-left of image) */}
         <div className="absolute bottom-12 left-12 z-10">
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-2">
             Stream<span className="text-red-600">Sync</span>
@@ -32,17 +64,16 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* --- RIGHT SIDE: Login Form (Modal Card) --- */}
+      {/* --- RIGHT SIDE: Login Form --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 relative">
         
-        {/* The Dark Form Card */}
         <div className="w-full max-w-lg bg-neutral-950 p-10 md:p-12 rounded-3xl border border-neutral-800 shadow-2xl">
           <div className="mb-10 text-center">
             <h2 className="text-2xl font-bold mb-1">WELCOME BACK</h2>
             <p className="text-neutral-400 text-sm">Sign in to your account to continue</p>
           </div>
 
-          {/* <-- ADD THIS GREEN SUCCESS BANNER --> */}
+          {/* GREEN SUCCESS BANNER */}
           {isVerified && (
             <div className="mb-6 flex items-start gap-3 p-4 bg-[#0a2e16] border border-[#166534] rounded-xl text-[#22c55e]">
               <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -51,11 +82,16 @@ const LoginPage = () => {
               </p>
             </div>
           )}
-          {/* <------------------------------------> */}
 
-          <form className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6">
             
-            {/* Email Input Field */}
+            {/* Error Message Display */}
+            {errorMessage && (
+              <div className="p-3 bg-red-950/40 border border-red-800 rounded-xl text-red-500 text-sm text-center">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-300">Email Address</label>
               <div className="relative">
@@ -63,15 +99,16 @@ const LoginPage = () => {
                   <Mail className="h-5 w-5 text-neutral-600" />
                 </div>
                 <input
+                  value={email}
                   type="email"
                   className="w-full pl-12 pr-4 py-3.5 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-white placeholder-neutral-600"
                   placeholder="Enter your email"
                   required
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* Password Input Field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-300">Password</label>
               <div className="relative">
@@ -79,15 +116,16 @@ const LoginPage = () => {
                   <Lock className="h-5 w-5 text-neutral-600" />
                 </div>
                 <input
+                  value={password}
                   type="password"
                   className="w-full pl-12 pr-4 py-3.5 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-white placeholder-neutral-600"
                   placeholder="Enter your password"
                   required
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* Actions: Remember Me & Forgot Password (Red link) */}
             <div className="flex items-center justify-between text-sm pt-2">
               <label className="flex items-center space-x-2 cursor-pointer text-neutral-400 hover:text-white transition-colors">
                 <input 
@@ -96,22 +134,22 @@ const LoginPage = () => {
                 />
                 <span>Remember me</span>
               </label>
-              <a href="/forgot-password" className="text-red-600 hover:text-red-500 font-medium transition-colors">
+              <Link to="/forgot-password" className="text-red-600 hover:text-red-500 font-medium transition-colors">
                 Forgot password?
-              </a>
+              </Link>
             </div>
 
-            {/* Submit Button (Solid Red) */}
-            <button
-              type="submit"
-              className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 mt-6 tracking-wide"
+            {/* RESTORED BUTTON STYLING */}
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 mt-6 tracking-wide disabled:opacity-50"
             >
-              SIGN IN
+              {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
 
           </form>
 
-          {/* Registration Link (Red link) */}
           <div className="mt-10 text-center text-sm text-neutral-400">
             Don't have an account?{' '}
             <Link to="/register" className="text-red-600 hover:text-red-500 font-medium transition-colors">
@@ -122,7 +160,6 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Floating Chat Button (Fixed position) */}
       <button className="fixed bottom-8 right-8 bg-[#ff0000] hover:bg-red-700 text-white p-4 rounded-full shadow-[0_0_15px_rgba(255,0,0,0.4)] transition-all z-50">
         <MessageSquare size={24} />
       </button>
