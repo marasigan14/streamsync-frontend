@@ -34,27 +34,31 @@ const LoginPage = () => {
 
     const userId = authData.user.id;
 
-    // 2. Fetch role from your public.users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', userId)
-      .single();
+    // 2. CHECK METADATA FIRST (This is where Admin/Staff roles are safely stored!)
+    let userRole = authData.user.user_metadata?.role;
 
-    if (userError) {
-      console.error("Error fetching role:", userError.message);
+    // 3. If not in metadata, check the public users table as a backup
+    if (!userRole) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (userData) {
+        userRole = userData.role;
+      }
     }
 
-    // 3. Route based on the role found (Defaults to client)
-    const userRole = userData?.role || 'client';
-    const normalizedRole = userRole.toLowerCase();
+    const normalizedRole = (userRole || 'client').toLowerCase();
 
+    // 4. Route strictly based on the found role
     if (normalizedRole === 'admin') {
       navigate('/admin/dashboard');
     } else if (normalizedRole === 'staff') {
       navigate('/staff/dashboard');
     } else {
-      navigate('/');
+      navigate('/'); // Clients go to the home page
     }
   };
 
