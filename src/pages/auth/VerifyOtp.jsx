@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Mail, ArrowLeft, RotateCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import heroImage from '../../assets/hero.png';
 
 
 const VerifyOtp = () => {
@@ -119,7 +120,7 @@ const VerifyOtp = () => {
       {/* --- LEFT SIDE: Branding and Image Collage --- */}
       <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        style={{ backgroundImage: "url('/src/assets/hero.png')" }} 
+        style={{ backgroundImage: `url(${heroImage})` }} 
       >
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="absolute bottom-12 left-12 z-10">
