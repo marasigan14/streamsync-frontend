@@ -54,7 +54,7 @@ const LoginPage = () => {
     } else if (normalizedRole === 'staff') {
       navigate('/staff/dashboard');
     } else {
-      navigate('/client/dashboard');
+      navigate('/');
     }
   };
 
