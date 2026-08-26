@@ -1,8 +1,7 @@
-import React, { useState } from 'react'; // <-- ADDED useState
+import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Mail, Lock, CheckCircle2, MessageSquare } from 'lucide-react';
-import { supabase } from '../../supabaseClient'; // <-- ADDED supabase import
-
+import { Mail, Lock, CheckCircle2, MessageSquare, Eye, EyeOff } from 'lucide-react';
+import { supabase } from '../../supabaseClient'; 
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -11,6 +10,7 @@ const LoginPage = () => {
   const isVerified = location.state?.verified;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Added state
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -19,25 +19,38 @@ const LoginPage = () => {
     setLoading(true);
     setErrorMessage('');
 
-    // Satisfies TC-M01-005 & TC-M01-006: Authentication Check
-    const { data, error } = await supabase.auth.signInWithPassword({
+    // 1. Authenticate with Supabase
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
 
-    if (error) {
-      // Satisfies TC-M01-006 (Wrong Password) & TC-M01-007 (Unverified Email)
-      setErrorMessage(error.message);
+    if (authError) {
+      setErrorMessage(authError.message);
       setLoading(false);
       return;
     }
 
-    // Satisfies TC-M01-008 & TC-M01-009: Role-Based Routing
-    const userRole = data.user?.user_metadata?.role || 'client';
-    
-    if (userRole === 'admin') {
+    const userId = authData.user.id;
+
+    // 2. Fetch role from your public.users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching role:", userError.message);
+    }
+
+    // 3. Route based on the role found (Defaults to client)
+    const userRole = userData?.role || 'client';
+    const normalizedRole = userRole.toLowerCase();
+
+    if (normalizedRole === 'admin') {
       navigate('/admin/dashboard');
-    } else if (userRole === 'staff') {
+    } else if (normalizedRole === 'staff') {
       navigate('/staff/dashboard');
     } else {
       navigate('/client/dashboard');
@@ -115,14 +128,23 @@ const LoginPage = () => {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-neutral-600" />
                 </div>
+                {/* Modified Input for Show Password */}
                 <input
                   value={password}
-                  type="password"
-                  className="w-full pl-12 pr-4 py-3.5 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-white placeholder-neutral-600"
+                  type={showPassword ? "text" : "password"}
+                  className="w-full pl-12 pr-12 py-3.5 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-white placeholder-neutral-600"
                   placeholder="Enter your password"
                   required
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {/* Eye Icon Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-neutral-500 hover:text-white transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
@@ -139,7 +161,6 @@ const LoginPage = () => {
               </Link>
             </div>
 
-            {/* RESTORED BUTTON STYLING */}
             <button 
               type="submit" 
               disabled={loading} 

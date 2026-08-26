@@ -1,15 +1,18 @@
+@import "tailwindcss";
+
+/* This forces Tailwind v4 to listen to our Sun/Moon button instead of your OS settings */
+@variant dark (&:where(.dark, .dark *));
+
 /* 1. Import Poppins from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
-/* 2. Import Tailwind */
-@import "tailwindcss";
+
 
 /* 3. Override the default Tailwind sans-serif font */
 @theme {
   --font-sans: "Poppins", sans-serif;
 }
-
-/* Keep your smooth scrolling */
+  /* Keep your smooth scrolling */
 html {
   scroll-behavior: smooth;
 }

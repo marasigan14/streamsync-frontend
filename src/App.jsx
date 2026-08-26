@@ -1,16 +1,16 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import VerifyOtp from './pages/auth/VerifyOtp';
+import React from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import VerifyOtp from "./pages/auth/VerifyOtp";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-//import { BrowserRouter as Router, Routes, Route, BrowserRouter } from 'react-router-dom';
-
-// Import your page components
-import LoginPage from './pages/auth/Login';
-import RegisterPage from './pages/auth/Register';
-import ForgotPasswordPage from './pages/auth/ForgotPassword';
-
-// If you have the LandingPage ready, you can import it too:
-// import LandingPage from './pages/LandingPage';
+// Page Imports
+import LoginPage from "./pages/auth/Login";
+import RegisterPage from "./pages/auth/Register";
+import ForgotPasswordPage from "./pages/auth/ForgotPassword";
+import ClientDashboard from "./pages/client/ClientDashboard";
+import StaffDashboard from "./pages/staff/StaffDashboard";
+import AdminDashboard from './pages/admin/AdminDashboard';
+import Home from "./pages/Home"; 
 
 function App() {
   return (
@@ -22,8 +22,39 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         
-        {/* Default Route (Can be your Landing Page later) */}
-        <Route path="/" element={<LoginPage />} /> 
+        {/* REMOVED THE DUPLICATE ADMIN ROUTE FROM HERE */}
+
+        {/* Role-Based Protected Dashboards */}
+        <Route
+          path="/client/dashboard"
+          element={
+            <ProtectedRoute allowedRole="client">
+              <ClientDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute allowedRole="staff">
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Default Landing Page Route */}
+        <Route path="/" element={<Home />} />
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );
