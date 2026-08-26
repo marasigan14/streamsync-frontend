@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Phone, Building, Check, X, Eye, EyeOff, FileText, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   

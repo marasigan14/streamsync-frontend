@@ -7,6 +7,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+// 1. IMPORT THE IMAGE HERE
+import heroCollage from '../assets/hero-collage.jpg';
+
 const Home = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
@@ -140,7 +143,12 @@ const Home = () => {
         </nav>
 
         {/* --- HERO SECTION --- */}
-        <section id="home" className="relative h-screen flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/src/assets/hero-collage.jpg')" }}>
+        {/* 2. UPDATE THE STYLE PROP HERE */}
+        <section 
+          id="home" 
+          className="relative h-screen flex items-center justify-center bg-cover bg-center" 
+          style={{ backgroundImage: `url(${heroCollage})` }}
+        >
           <div className="absolute inset-0 bg-black/50 dark:bg-black/70 bg-gradient-to-t from-neutral-50 dark:from-black via-transparent to-transparent z-0 transition-colors duration-300"></div>
           <div className="relative z-10 text-center px-4 w-full max-w-5xl mx-auto mt-20">
             <h1 className="text-5xl md:text-7xl lg:text-[90px] font-black tracking-widest uppercase mb-6 text-white drop-shadow-2xl">Livestream Manila</h1>
@@ -254,7 +262,7 @@ const Home = () => {
                       <p className="text-lg font-bold tracking-widest text-neutral-900 dark:text-white">{promo.code}</p>
                     </div>
                     <div className="flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 pt-5 transition-colors duration-300">
-                      <span className="text-[11px] text-neutral-600 dark:text-neutral-500 flex items-center gap-1.5"><Clock size={12} /> Valid until {promo.date}</span>
+                      <span className="text-[11px] text-neutral-600 dark:text-neutral-50 flex items-center gap-1.5"><Clock size={12} /> Valid until {promo.date}</span>
                     </div>
                   </div>
                 </div>

@@ -3,6 +3,7 @@ import { Mail, ArrowLeft, RotateCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 
+
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
