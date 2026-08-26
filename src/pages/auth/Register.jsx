@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; 
 import { User, Mail, Phone, Building, Check, X, Eye, EyeOff, FileText, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import heroImage from '../../assets/hero.png';
 
 
 const RegisterPage = () => {
@@ -91,7 +92,7 @@ const RegisterPage = () => {
       {/* --- LEFT SIDE: Branding and Image Collage --- */}
       <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        style={{ backgroundImage: "url('/src/assets/hero.png')" }} 
+        style={{ backgroundImage: `url(${heroImage})` }} 
       >
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="absolute bottom-12 left-12 z-10">
