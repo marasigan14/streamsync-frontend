@@ -5,28 +5,15 @@ import {
   MapPin, Calendar, Phone, Mail, Send
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../../supabaseClient";
 
-const Home = () => {
+// Import the hero collage background image
+import heroCollage from "../../assets/hero-collage.jpg";
+
+const ClientMain = () => {
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [activeSection, setActiveSection] = useState("home");
-
-  // Check if a user is securely logged in
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // Update active section on scroll
   useEffect(() => {
@@ -72,11 +59,10 @@ const Home = () => {
   ];
 
   return (
-    // FAILSAFE ADDED HERE: Forces the dark class into the React tree
     <div className={isDarkMode ? "dark" : ""}>
       <div className="min-h-screen font-sans relative bg-neutral-50 dark:bg-black text-neutral-900 dark:text-white transition-colors duration-300">
         
-        {/* --- TOP NAVBAR --- */}
+        {/* --- TOP NAVBAR (Client Version) --- */}
         <nav className="fixed top-0 w-full z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800 transition-colors duration-300">
           <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
             
@@ -110,24 +96,24 @@ const Home = () => {
               >
                 {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
               </button>
-              <button className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition">
-                <Search size={20} />
+
+              {/* Profile Icon linked to lowercase client-dashboard */}
+              <button 
+                onClick={() => navigate("/client/dashboard")} 
+                className="text-neutral-500 dark:text-neutral-400 hover:text-red-600 transition" 
+                title="Go to Dashboard"
+              >
+                <User size={20} />
               </button>
 
-              {session ? (
-                <>
-                  <button onClick={() => navigate("/client/dashboard")} className="text-neutral-500 dark:text-neutral-400 hover:text-red-600 transition" title="Go to Dashboard">
-                    <User size={20} />
-                  </button>
-                  <button onClick={handleLogout} className="text-neutral-500 dark:text-neutral-400 hover:text-red-600 transition" title="Log Out">
-                    <LogOut size={20} />
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => navigate("/login")} className="text-sm font-medium text-neutral-500 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition">
-                  Login
-                </button>
-              )}
+              {/* Logout Button */}
+              <button 
+                onClick={handleLogout} 
+                className="text-neutral-500 dark:text-neutral-400 hover:text-red-600 transition" 
+                title="Log Out"
+              >
+                <LogOut size={20} />
+              </button>
 
               <button 
                 onClick={() => document.getElementById('contact').scrollIntoView({ behavior: 'smooth' })}
@@ -140,7 +126,11 @@ const Home = () => {
         </nav>
 
         {/* --- HERO SECTION --- */}
-        <section id="home" className="relative h-screen flex items-center justify-center bg-cover bg-center" style={{ backgroundImage: "url('/src/assets/hero-collage.jpg')" }}>
+        <section 
+          id="home" 
+          className="relative h-screen flex items-center justify-center bg-cover bg-center" 
+          style={{ backgroundImage: `url(${heroCollage})` }}
+        >
           <div className="absolute inset-0 bg-black/50 dark:bg-black/70 bg-gradient-to-t from-neutral-50 dark:from-black via-transparent to-transparent z-0 transition-colors duration-300"></div>
           <div className="relative z-10 text-center px-4 w-full max-w-5xl mx-auto mt-20">
             <h1 className="text-5xl md:text-7xl lg:text-[90px] font-black tracking-widest uppercase mb-6 text-white drop-shadow-2xl">Livestream Manila</h1>
@@ -151,8 +141,8 @@ const Home = () => {
               <button onClick={() => document.getElementById('services').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto bg-[#ff0000] hover:bg-red-700 text-white font-bold py-4 px-10 rounded-lg tracking-wider transition-colors shadow-lg shadow-red-600/30">
                 EXPLORE SERVICES
               </button>
-              <button onClick={() => document.getElementById('contact').scrollIntoView({ behavior: 'smooth' })} className="w-full sm:w-auto bg-white/10 backdrop-blur-sm border-2 border-white hover:bg-white/20 text-white font-bold py-4 px-10 rounded-lg tracking-wider transition-all">
-                CONTACT US
+              <button onClick={() => navigate('/client-dashboard')} className="w-full sm:w-auto bg-white/10 backdrop-blur-sm border-2 border-white hover:bg-white/20 text-white font-bold py-4 px-10 rounded-lg tracking-wider transition-all">
+                MANAGE DASHBOARD
               </button>
             </div>
           </div>
@@ -199,33 +189,9 @@ const Home = () => {
           </div>
         </section>
 
-        {/* --- LEADERSHIP / PROMOS SECTION --- */}
+        {/* --- PROMOS SECTION --- */}
         <section id="promos" className="py-24 bg-white dark:bg-[#0a0a0a] border-t border-neutral-200 dark:border-neutral-900 transition-colors duration-300">
           <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-black tracking-widest uppercase text-neutral-900 dark:text-white">StreamSync Team</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-24">
-              {[
-                { name: "JOASH MARASIGAN", role: "Project Lead", exp: "System Architecture & UI/UX" },
-                { name: "CHARLES", role: "Backend Developer", exp: "Database Integration & Logic" },
-                { name: "GENETH", role: "Systems Analyst", exp: "Process Workflows" },
-                { name: "VICTOR", role: "Database Administrator", exp: "Data Security & Modeling" },
-                { name: "JULIE", role: "Quality Assurance", exp: "Testing & Validation" },
-                { name: "SHANEL", role: "Documentation", exp: "Technical Writing & QA" }
-              ].map((member, i) => (
-                <div key={i} className="bg-neutral-50 dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 text-center hover:border-red-600/30 dark:hover:border-red-900/50 transition-colors shadow-sm dark:shadow-none">
-                  <div className="w-24 h-24 mx-auto rounded-full bg-neutral-200 dark:bg-neutral-800 mb-5 relative overflow-hidden">
-                    <img src={`https://ui-avatars.com/api/?name=${member.name.replace(' ', '+')}&background=7f1d1d&color=fff`} alt={member.name} className="w-full h-full object-cover" />
-                  </div>
-                  <h3 className="text-lg font-bold tracking-wider text-neutral-900 dark:text-white">{member.name}</h3>
-                  <p className="text-xs font-bold text-red-600 uppercase mb-3">{member.role}</p>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400">{member.exp}</p>
-                </div>
-              ))}
-            </div>
-
             <div className="text-center max-w-2xl mx-auto mb-16">
               <span className="text-red-600 text-xs font-bold tracking-widest uppercase">Special Offers</span>
               <h2 className="text-4xl font-black tracking-wide mt-2 mb-4 text-neutral-900 dark:text-white">Current Promotions</h2>
@@ -254,7 +220,7 @@ const Home = () => {
                       <p className="text-lg font-bold tracking-widest text-neutral-900 dark:text-white">{promo.code}</p>
                     </div>
                     <div className="flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800 pt-5 transition-colors duration-300">
-                      <span className="text-[11px] text-neutral-600 dark:text-neutral-500 flex items-center gap-1.5"><Clock size={12} /> Valid until {promo.date}</span>
+                      <span className="text-[11px] text-neutral-600 dark:text-neutral-50 flex items-center gap-1.5"><Clock size={12} /> Valid until {promo.date}</span>
                     </div>
                   </div>
                 </div>
@@ -314,7 +280,7 @@ const Home = () => {
                   <div className="p-8 relative z-20 flex flex-col items-center text-center flex-grow">
                     <h4 className="text-base font-bold tracking-widest mb-3 uppercase text-neutral-900 dark:text-white">{pkg.title}</h4>
                     <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-8 leading-relaxed flex-grow">{pkg.desc}</p>
-                    <button className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-3 rounded-lg text-xs tracking-wider transition-colors">VIEW SAMPLES</button>
+                    <button onClick={() => navigate('/client-dashboard')} className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-3 rounded-lg text-xs tracking-wider transition-colors">VIEW SAMPLES</button>
                   </div>
                 </div>
               ))}
@@ -385,9 +351,10 @@ const Home = () => {
              <p>© 2026 Livestream Manila. All rights reserved.</p>
           </div>
         </footer>
+
       </div>
     </div>
   );
 };
 
-export default Home;
+export default ClientMain;

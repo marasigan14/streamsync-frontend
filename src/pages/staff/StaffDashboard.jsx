@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
-import {
-  Sun, Moon, LogOut, LayoutDashboard, Calendar, Wrench, Package,
-  CheckCircle2, Clock, AlertTriangle, MessageSquare, ShieldCheck, UserCheck, Plus
-} from "lucide-react";
+import { Sun, Moon, LogOut, Home, CalendarDays, ClipboardList, Wrench } from "lucide-react";
+
+import StaffOverview from "./StaffOverview";
+import SchedulingManagement from "./SchedulingManagement";
+import EquipmentChecklist from "./EquipmentChecklist";
+import StaffMaintenance from "./StaffMaintenance";
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
@@ -26,10 +28,10 @@ const StaffDashboard = () => {
   };
 
   const navItems = [
-    { id: "overview", label: "OVERVIEW", icon: LayoutDashboard },
-    { id: "availability", label: "AVAILABILITY MANAGER", icon: Calendar },
-    { id: "inventory", label: "INVENTORY & GEAR", icon: Package },
-    { id: "maintenance", label: "MAINTENANCE LOGS", icon: Wrench },
+    { id: "overview", label: "OVERVIEW", icon: Home },
+    { id: "scheduling", label: "AVAILABILITY MANAGER", icon: CalendarDays },
+    { id: "inventory", label: "INVENTORY", icon: ClipboardList },
+    { id: "maintenance", label: "MAINTENANCE", icon: Wrench },
   ];
 
   return (
@@ -60,7 +62,7 @@ const StaffDashboard = () => {
                     : "text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 hover:text-neutral-900 dark:hover:text-white"
                 }`}
               >
-                <Icon size={16} className={isActive ? "text-white" : "text-neutral-500"} />
+                <Icon size={16} className={isActive ? "text-white" : "text-neutral-500 dark:text-neutral-500"} />
                 {item.label}
               </button>
             );
@@ -68,69 +70,39 @@ const StaffDashboard = () => {
         </nav>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
+      {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 flex flex-col h-full relative">
+        
+        {/* Top Header */}
         <header className="h-20 bg-white dark:bg-[#0a0a0a] border-b border-neutral-200 dark:border-neutral-900 flex items-center justify-between px-8 transition-colors duration-300 shrink-0">
           <div className="flex-1"></div>
+          
           <div className="flex items-center gap-6">
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="text-neutral-500 dark:text-neutral-400 hover:text-white transition">
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition">
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="flex items-center gap-3 text-right border-l border-neutral-800 pl-6">
+            
+            <div className="flex items-center gap-3 text-right border-l border-neutral-200 dark:border-neutral-800 pl-6">
               <div>
-                <p className="text-sm font-bold text-white leading-none">Staff Operator</p>
-                <p className="text-[10px] text-neutral-400 mt-1">Broadcast Tech Unit</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-red-950 flex items-center justify-center text-red-500 font-bold text-xs border border-red-900">
-                SO
+                <p className="text-sm font-bold text-neutral-900 dark:text-white leading-none">Joash Marasigan</p>
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">staff@livestreammanila.ph</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="flex items-center gap-2 text-xs font-bold text-red-600 bg-red-950/30 px-4 py-2 rounded-lg hover:bg-red-900/40 transition">
+
+            <button onClick={handleLogout} className="flex items-center gap-2 text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/30 px-4 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition">
               <LogOut size={14} /> LOGOUT
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 lg:p-12">
-          
-          {/* OVERVIEW TAB */}
-          {activeTab === "overview" && (
-            <div className="max-w-6xl mx-auto animation-fade-in">
-              <div className="mb-10">
-                <h1 className="text-3xl font-black tracking-wide uppercase mb-2 text-white">Staff Command Center</h1>
-                <p className="text-sm text-neutral-400">Monitor active streaming deployments, gear health, and personal scheduling.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-6 flex items-center gap-5">
-                  <div className="w-14 h-14 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 shrink-0"><UserCheck size={24}/></div>
-                  <div>
-                    <h2 className="text-3xl font-black text-white leading-none mb-1">3</h2>
-                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Assigned Events Today</p>
-                  </div>
-                </div>
-                <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-6 flex items-center gap-5">
-                  <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 shrink-0"><AlertTriangle size={24}/></div>
-                  <div>
-                    <h2 className="text-3xl font-black text-white leading-none mb-1">2</h2>
-                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Gear Requiring Check</p>
-                  </div>
-                </div>
-                <div className="bg-[#121212] border border-neutral-800 rounded-2xl p-6 flex items-center gap-5">
-                  <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 shrink-0"><ShieldCheck size={24}/></div>
-                  <div>
-                    <h2 className="text-3xl font-black text-white leading-none mb-1">100%</h2>
-                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">System Operational</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "availability" && <div className="text-neutral-400">Availability Manager calendar interface goes here...</div>}
-          {activeTab === "inventory" && <div className="text-neutral-400">Inventory & Gear tracking list goes here...</div>}
-          {activeTab === "maintenance" && <div className="text-neutral-400">Maintenance & Repair ticketing system goes here...</div>}
+        {/* Scrollable Content View */}
+        <div className="flex-1 overflow-y-auto p-8 lg:p-12 relative">
+          {activeTab === "overview" && <StaffOverview setActiveTab={setActiveTab} />}
+          {activeTab === "scheduling" && <SchedulingManagement />}
+          {activeTab === "inventory" && <EquipmentChecklist />}
+          {activeTab === "maintenance" && <StaffMaintenance />}
         </div>
+
       </main>
     </div>
   );

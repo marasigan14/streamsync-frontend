@@ -1,30 +1,31 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import VerifyOtp from "./pages/auth/VerifyOtp";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Page Imports
+import Home from "./pages/Home";
 import LoginPage from "./pages/auth/Login";
 import RegisterPage from "./pages/auth/Register";
-import ForgotPasswordPage from "./pages/auth/ForgotPassword";
+import ClientMain from "./pages/client/ClientMain";
 import ClientDashboard from "./pages/client/ClientDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import StaffDashboard from "./pages/staff/StaffDashboard";
-import AdminDashboard from './pages/admin/AdminDashboard';
-import Home from "./pages/Home"; 
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Authentication Routes */}
+        {/* Public Landing Page */}
+        <Route path="/" element={<Home />} />
+
+        {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/verify-otp" element={<VerifyOtp />} />
-        
-        {/* REMOVED THE DUPLICATE ADMIN ROUTE FROM HERE */}
 
-        {/* Role-Based Protected Dashboards */}
+        {/* --- CLIENT MAIN LANDING PAGE ROUTE --- */}
+        <Route path="/client-main" element={<ProtectedRoute allowedRole="client"><ClientMain /></ProtectedRoute>} />
+
+        {/* --- CLIENT BACKEND DASHBOARD ROUTE --- */}
         <Route
           path="/client/dashboard"
           element={
@@ -34,15 +35,7 @@ function App() {
           }
         />
 
-        <Route
-          path="/staff/dashboard"
-          element={
-            <ProtectedRoute allowedRole="staff">
-              <StaffDashboard />
-            </ProtectedRoute>
-          }
-        />
-
+        {/* Protected Admin & Staff Dashboards */}
         <Route
           path="/admin/dashboard"
           element={
@@ -51,10 +44,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Default Landing Page Route */}
-        <Route path="/" element={<Home />} />
-        <Route path="*" element={<Home />} />
+        <Route
+          path="/staff/dashboard"
+          element={
+            <ProtectedRoute allowedRole="staff">
+              <StaffDashboard />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
