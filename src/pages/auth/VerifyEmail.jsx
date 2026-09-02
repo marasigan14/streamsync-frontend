@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Phone, ArrowLeft, RotateCw } from 'lucide-react';
+import { Mail, ArrowLeft, RotateCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import heroImage from '../../assets/hero.png';
 
-const VerifyOtp = () => {
+const VerifyEmail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Retrieve email AND phone passed from the Register page
+  // Retrieve email passed from the Register or Phone Verification page
   const email = location.state?.email || '';
-  const phone = location.state?.phone || '';
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [timeLeft, setTimeLeft] = useState(5 * 60);
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes
   const [resending, setResending] = useState(false);
 
   const inputRefs = useRef([]);
@@ -60,7 +59,7 @@ const VerifyOtp = () => {
     }
   };
 
-  // Verify OTP using the mock-supported Edge Function
+  // Verify Native Supabase Auth OTP
   const handleVerify = async (e) => {
     e.preventDefault();
     const token = otp.join('');
@@ -73,42 +72,43 @@ const VerifyOtp = () => {
     setLoading(true);
     setErrorMessage('');
 
-    // Call the updated backend function to verify the SMS code and clean up database table
-    const { data, error } = await supabase.functions.invoke('verify-sms-otp', {
-      body: { phone: phone, otp: token }
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email,
+      token: token,
+      type: 'signup'
     });
 
-    if (error || !data?.success) {
-      setErrorMessage(error?.message || data?.message || 'Invalid or expired code.');
+    if (error) {
+      setErrorMessage(error.message || 'Invalid or expired code.');
       setLoading(false);
     } else {
-      // Verification successful -> Direct to login or success notice
-      navigate('/verify-email', { state: { email: email } });
+      // Email verified successfully -> Redirect to Login with the green success banner
+      navigate('/login', { state: { verified: true } });
     }
   };
 
-  // Resend OTP handler via Edge Function
+  // Resend Native Supabase Auth OTP
   const handleResend = async () => {
-    if (resending) return; 
+    if (resending) return;
     setResending(true);
     setErrorMessage('');
 
-    const { data, error } = await supabase.functions.invoke('send-otp-code', {
-      body: { phone: phone }
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
     });
 
-    if (error || !data?.success) {
-      setErrorMessage(error?.message || 'Failed to resend OTP.');
+    if (error) {
+      setErrorMessage(error.message);
     } else {
-      setTimeLeft(5 * 60);
-      alert('A new verification code has been sent to your phone!');
+      setTimeLeft(15 * 60);
+      alert('A new verification code has been sent to your email!');
     }
     setResending(false);
   };
 
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
-      {/* --- LEFT SIDE: Branding --- */}
       <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
         style={{ backgroundImage: `url(${heroImage})` }} 
@@ -125,31 +125,30 @@ const VerifyOtp = () => {
         </div>
       </div>
 
-      {/* --- RIGHT SIDE: OTP Verification Card --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 relative">
         <div className="w-full max-w-md bg-[#121212] p-8 md:p-10 rounded-3xl border border-neutral-800 shadow-2xl">
           
           <button 
             onClick={() => navigate('/register')}
-            className="flex items-center text-xs text-neutral-400 hover:text-white transition-colors mb-6"
+            className="flex items-center text-xs text-neutral-400 hover:text-white transition-colors mb-6 cursor-pointer"
           >
             <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to registration
           </button>
 
           <div className="text-center flex flex-col items-center mb-6">
             <div className="w-14 h-14 bg-red-950/40 border border-red-800/50 flex items-center justify-center rounded-full mb-4">
-              <Phone className="h-6 w-6 text-red-500" />
+              <Mail className="h-6 w-6 text-red-500" />
             </div>
-            <h2 className="text-2xl font-bold tracking-tight mb-1">VERIFY YOUR PHONE</h2>
-            <p className="text-neutral-400 text-xs mt-2">
-              We've sent a 6-digit SMS verification code to<br />
-              <span className="text-neutral-200 font-medium text-sm mt-1 block">{phone}</span>
+            <h2 className="text-2xl font-bold tracking-tight mb-1">VERIFY YOUR ACCOUNT</h2>
+            <p className="text-neutral-400 text-xs">
+              We've sent a 6-digit verification code to<br />
+              <span className="text-neutral-200 font-medium text-sm mt-1 block">{email}</span>
             </p>
           </div>
 
           <form onSubmit={handleVerify} className="space-y-6">
             <div>
-              <p className="text-xs text-center text-neutral-400 mb-3">Enter SMS Code</p>
+              <p className="text-xs text-center text-neutral-400 mb-3">Enter Verification Code</p>
               <div className="flex justify-between gap-2" onPaste={handlePaste}>
                 {otp.map((digit, index) => (
                   <input
@@ -191,13 +190,18 @@ const VerifyOtp = () => {
               disabled={loading}
               className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl transition-colors text-sm tracking-wide disabled:opacity-50 cursor-pointer"
             >
-              {loading ? 'VERIFYING...' : 'VERIFY PHONE'}
+              {loading ? 'VERIFYING...' : 'VERIFY ACCOUNT'}
             </button>
+
+            <p className="text-[11px] text-center text-neutral-500">
+              The verification code will expire in 15 minutes
+            </p>
           </form>
+
         </div>
       </div>
     </div>
   );
 };
 
-export default VerifyOtp;
+export default VerifyEmail;

@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import heroImage from '../../assets/hero.png';
 
 
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   
@@ -81,8 +82,22 @@ const RegisterPage = () => {
       return; // This stops the redirect!
     }
 
-    // Only navigate if it's a truly new account
-    navigate('/verify-otp', { state: { email: formData.email } });
+    // --- NEW: SEND SMS OTP BEFORE REDIRECTING ---
+    const { data: otpData, error: otpError } = await supabase.functions.invoke('send-otp-code', {
+      body: { phone: formData.phone }
+    });
+
+    // CHANGE THIS BLOCK TEMPORARILY TO INSPECT THE DATA:
+    if (otpError || !otpData?.success) {
+      console.error("RAW OTP ERROR:", otpError);
+      console.error("RAW OTP DATA:", otpData); // <-- This will show us the exact response
+      setMessage(`SMS Error: ${otpData?.message || otpError?.message || 'Unknown error'}`);
+      setLoading(false);
+      return;
+    }
+
+    // USER VERIFICATIONS
+    navigate('/verify-otp', { state: { email: formData.email, phone: formData.phone } });
     setLoading(false);
   };
 

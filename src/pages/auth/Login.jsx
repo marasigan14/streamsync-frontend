@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Mail,
@@ -15,12 +15,25 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isVerified = location.state?.verified;
+  const [successMessage, setSuccessMessage] = useState(
+    location.state?.verified ? "Account verified successfully! You can now sign in." : ""
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Auto-hide the success banner after 5 seconds and clear router state
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage("");
+        window.history.replaceState({}, document.title);
+      }, 5000); // 5 seconds duration
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -106,12 +119,12 @@ const LoginPage = () => {
             </p>
           </div>
 
-          {/* GREEN SUCCESS BANNER */}
-          {isVerified && (
-            <div className="mb-6 flex items-start gap-3 p-4 bg-[#0a2e16] border border-[#166534] rounded-xl text-[#22c55e]">
+          {/* GREEN SUCCESS BANNER WITH 5-SECOND TIMED DISMISSAL */}
+          {successMessage && (
+            <div className="mb-6 flex items-start gap-3 p-4 bg-[#0a2e16] border border-[#166534] rounded-xl text-[#22c55e] transition-opacity duration-500">
               <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <p className="text-sm font-medium">
-                Account verified successfully! You can now sign in.
+                {successMessage}
               </p>
             </div>
           )}

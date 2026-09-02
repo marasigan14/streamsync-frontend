@@ -10,6 +10,8 @@ import ClientMain from "./pages/client/ClientMain";
 import ClientDashboard from "./pages/client/ClientDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import StaffDashboard from "./pages/staff/StaffDashboard";
+import VerifyOtpPage from "./pages/auth/VerifyOtp.jsx";
+import VerifyEmailPage from "./pages/auth/VerifyEmail";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-otp" element={<VerifyOtpPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         {/* --- CLIENT MAIN LANDING PAGE ROUTE --- */}
         <Route path="/client-main" element={<ProtectedRoute allowedRole="client"><ClientMain /></ProtectedRoute>} />
