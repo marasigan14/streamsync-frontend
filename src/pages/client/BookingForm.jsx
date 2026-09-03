@@ -160,50 +160,37 @@ const BookingForm = () => {
   };
 
   // Service Catalog
-  const availableServices = [
-    {
-      id: "live-event-streaming",
-      title: "Live Event Streaming",
-      desc: "Multi-camera live streaming with real-time switching.",
-      badge: "POPULAR",
-      image: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "video-production",
-      title: "Video Production",
-      desc: "Full-service coverage, cinematic filming & editing.",
-      badge: "SERVICE",
-      image: "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "audio-engineering",
-      title: "Audio Engineering",
-      desc: "Multi-channel mixer, wireless mics & crystal clear audio.",
-      badge: "AUDIO",
-      image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "virtual-events",
-      title: "Virtual Events",
-      desc: "Zoom, Teams, and customized branded virtual stages.",
-      badge: "ONLINE",
-      image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "webinar-production",
-      title: "Webinar Production",
-      desc: "Interactive corporate conferences with real-time Q&A.",
-      badge: "CORPORATE",
-      image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?q=80&w=600&auto=format&fit=crop",
-    },
-    {
-      id: "hybrid-events",
-      title: "Hybrid Events",
-      desc: "Simultaneous on-site audience and global virtual attendees.",
-      badge: "HYBRID",
-      image: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=600&auto=format&fit=crop",
-    },
-  ];
+  const [availableServices, setAvailableServices] = useState([]);
+
+useEffect(() => {
+  const loadServices = async () => {
+    // Kunin lang ang mga services na NAKA-ON (is_active === true)
+    const { data, error } = await supabase
+      .from("services")
+      .select("*")
+      .eq("is_active", true);
+
+    if (!error && data) {
+      setAvailableServices(data);
+    }
+  };
+
+  loadServices();
+
+  // Realtime subscription: kapag in-off sa admin, kusa ding magtatago sa client
+  const channel = supabase
+    .channel("services-sync")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "services" },
+      () => loadServices()
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   // Pre-configured Packages
   const availablePackages = [

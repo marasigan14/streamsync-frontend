@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Clock, Users, DollarSign, AlertTriangle, 
-  AlertCircle, CheckCircle2, ChevronRight 
+import {
+  Clock,
+  Users,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle2,
+  Activity,
 } from "lucide-react";
+import { supabase } from "../../supabaseClient";
 
 const AdminOverview = ({ setActiveTab }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [metrics, setMetrics] = useState({
+    pendingBookings: 12,
+    activeStaff: 45,
+    monthlyRevenue: "₱450K",
+    equipmentAlerts: 3,
+  });
 
-  // Real-time clock updater
+  // Clock Ticker
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -15,229 +26,282 @@ const AdminOverview = ({ setActiveTab }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const formattedTime = currentTime.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true
+  const formattedTime = currentTime.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 
+  // Recent Bookings Data matching image_e82561.jpg
+  const recentBookings = [
+    {
+      id: "BK-2026-045",
+      client: "Tech Corp Inc.",
+      event: "Annual Conference",
+      date: "Sep 10, 2026",
+      status: "Pending",
+      statusColor: "amber",
+    },
+    {
+      id: "BK-2026-044",
+      client: "Maria Santos",
+      event: "Wedding Livestream",
+      date: "Aug 25, 2026",
+      status: "Confirmed",
+      statusColor: "emerald",
+    },
+    {
+      id: "BK-2026-043",
+      client: "Global E-sports",
+      event: "Gaming Tournament",
+      date: "Aug 18, 2026",
+      status: "In Progress",
+      statusColor: "blue",
+    },
+  ];
+
+  // System Alerts matching image_e82561.jpg
+  const systemAlerts = [
+    {
+      id: 1,
+      type: "Inventory",
+      time: "2 hours ago",
+      icon: AlertTriangle,
+      iconColor: "text-amber-500",
+      message: "Sony A7S III (Camera 3) needs scheduled maintenance.",
+    },
+    {
+      id: 2,
+      type: "Staff",
+      time: "5 hours ago",
+      icon: AlertTriangle,
+      iconColor: "text-red-500",
+      message: "2 staff members called in sick for tomorrow's event.",
+    },
+    {
+      id: 3,
+      type: "System",
+      time: "1 day ago",
+      icon: CheckCircle2,
+      iconColor: "text-emerald-500",
+      message: "System backup completed successfully.",
+    },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto animation-fade-in">
-      
+    <div className="w-full space-y-6 font-['Montserrat',sans-serif] text-white">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-wide uppercase mb-2 text-neutral-900 dark:text-white">Admin Dashboard</h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">System overview and critical alerts.</p>
+          <h1 className="text-3xl font-black uppercase tracking-wide text-white mb-1">
+            Admin Dashboard
+          </h1>
+          <p className="text-xs text-neutral-400">
+            System overview and critical alerts.
+          </p>
         </div>
+
         <div className="text-left md:text-right">
-          <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-1">Current Time</p>
-          <p className="text-xl font-bold text-neutral-900 dark:text-white tracking-wider">{formattedTime}</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-widest text-neutral-500 mb-0.5">
+            Current Time
+          </p>
+          <p className="text-2xl font-black text-white font-mono tracking-tight">
+            {formattedTime}
+          </p>
         </div>
       </div>
 
-      {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-        
-        {/* Metric 1: Pending Bookings */}
-        <div className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 flex items-center gap-5 transition-colors">
-          <div className="w-14 h-14 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 shrink-0">
+      {/* 4 Upper Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Pending Bookings */}
+        <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-6 flex items-center gap-5 min-h-[110px]">
+          <div className="w-14 h-14 rounded-2xl bg-[#261f18] border border-[#3f3020] text-amber-500 flex items-center justify-center shrink-0">
             <Clock size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-neutral-900 dark:text-white leading-none mb-1">12</h2>
-            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest leading-tight">Pending<br/>Bookings</p>
+            <h2 className="text-3xl font-black leading-none text-white">
+              {metrics.pendingBookings}
+            </h2>
+            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5 leading-tight">
+              Pending<br />Bookings
+            </p>
           </div>
         </div>
 
-        {/* Metric 2: Active Staff */}
-        <div className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 flex items-center gap-5 transition-colors">
-          <div className="w-14 h-14 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 shrink-0">
+        {/* Active Staff */}
+        <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-6 flex items-center gap-5 min-h-[110px]">
+          <div className="w-14 h-14 rounded-2xl bg-[#141b2b] border border-[#202b45] text-blue-500 flex items-center justify-center shrink-0">
             <Users size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-neutral-900 dark:text-white leading-none mb-1">45</h2>
-            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest leading-tight">Active<br/>Staff</p>
+            <h2 className="text-3xl font-black leading-none text-white">
+              {metrics.activeStaff}
+            </h2>
+            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5 leading-tight">
+              Active<br />Staff
+            </p>
           </div>
         </div>
 
-        {/* Metric 3: Monthly Revenue */}
-        <div className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 flex items-center gap-5 transition-colors">
-          <div className="w-14 h-14 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 shrink-0">
+        {/* Monthly Revenue */}
+        <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-6 flex items-center gap-5 min-h-[110px]">
+          <div className="w-14 h-14 rounded-2xl bg-[#122320] border border-[#1b3a33] text-emerald-500 flex items-center justify-center shrink-0">
             <DollarSign size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-neutral-900 dark:text-white leading-none mb-1">₱450K</h2>
-            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest leading-tight">Monthly<br/>Revenue</p>
+            <h2 className="text-3xl font-black leading-none text-white">
+              {metrics.monthlyRevenue}
+            </h2>
+            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5 leading-tight">
+              Monthly<br />Revenue
+            </p>
           </div>
         </div>
 
-        {/* Metric 4: Equipment Alerts */}
-        <div className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 flex items-center gap-5 transition-colors">
-          <div className="w-14 h-14 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 shrink-0">
+        {/* Equipment Alerts */}
+        <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-6 flex items-center gap-5 min-h-[110px]">
+          <div className="w-14 h-14 rounded-2xl bg-red-950/40 border border-red-900/50 text-red-500 flex items-center justify-center shrink-0">
             <AlertTriangle size={24} />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-neutral-900 dark:text-white leading-none mb-1">3</h2>
-            <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest leading-tight">Equipment<br/>Alerts</p>
+            <h2 className="text-3xl font-black leading-none text-white">
+              {metrics.equipmentAlerts}
+            </h2>
+            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5 leading-tight">
+              Equipment<br />Alerts
+            </p>
           </div>
         </div>
-
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* Left Column: Recent Bookings */}
-        <div className="xl:col-span-2 bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 flex flex-col transition-colors">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-sm font-bold tracking-widest uppercase text-neutral-900 dark:text-white">Recent Bookings</h3>
-            <button 
+      {/* Main Grid: Recent Bookings + System Alerts */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Left: Recent Bookings Table Card */}
+        <div className="xl:col-span-8 bg-[#0f121a] border border-[#1b212f] rounded-2xl p-7 space-y-6">
+          <div className="flex items-center justify-between border-b border-[#1b212f] pb-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-white">
+              Recent Bookings
+            </h3>
+            <button
+              type="button"
               onClick={() => setActiveTab("bookings")}
-              className="text-xs font-bold text-red-600 hover:text-red-500 transition-colors"
+              className="text-xs font-bold text-red-600 hover:text-red-500 transition cursor-pointer"
             >
               View All
             </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left min-w-[600px]">
+            <table className="w-full text-left min-w-[650px] text-xs">
               <thead>
-                <tr className="border-b border-neutral-200 dark:border-neutral-800 text-[10px] uppercase tracking-widest text-neutral-500">
-                  <th className="pb-4 font-bold">Booking ID</th>
-                  <th className="pb-4 font-bold">Client</th>
-                  <th className="pb-4 font-bold">Event</th>
-                  <th className="pb-4 font-bold">Date</th>
-                  <th className="pb-4 font-bold text-right">Status</th>
+                <tr className="border-b border-[#1b212f] text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+                  <th className="pb-3.5">Booking ID</th>
+                  <th className="pb-3.5">Client</th>
+                  <th className="pb-3.5">Event</th>
+                  <th className="pb-3.5">Date</th>
+                  <th className="pb-3.5 text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className="text-sm">
-                
-                <tr className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-900/30 transition-colors">
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">BK-2026-<br/>045</td>
-                  <td className="py-4 font-bold text-neutral-900 dark:text-white">Tech Corp Inc.</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Annual Conference</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Sep 10, 2026</td>
-                  <td className="py-4 text-right">
-                    <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full inline-block">
-                      Pending
-                    </span>
-                  </td>
-                </tr>
+              <tbody className="divide-y divide-[#141824]">
+                {recentBookings.map((bkg) => (
+                  <tr key={bkg.id} className="hover:bg-[#121622] transition-colors">
+                    <td className="py-4 font-mono text-[11px] text-neutral-400">
+                      {bkg.id}
+                    </td>
 
-                <tr className="border-b border-neutral-100 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-900/30 transition-colors">
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">BK-2026-<br/>044</td>
-                  <td className="py-4 font-bold text-neutral-900 dark:text-white">Maria Santos</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Wedding Livestream</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Aug 25, 2026</td>
-                  <td className="py-4 text-right">
-                    <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full inline-block">
-                      Confirmed
-                    </span>
-                  </td>
-                </tr>
+                    <td className="py-4 font-bold text-white">
+                      {bkg.client}
+                    </td>
 
-                <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-900/30 transition-colors">
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 font-mono text-[11px]">BK-2026-<br/>043</td>
-                  <td className="py-4 font-bold text-neutral-900 dark:text-white">Global E-<br/>sports</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Gaming Tournament</td>
-                  <td className="py-4 text-neutral-600 dark:text-neutral-400 text-xs">Aug 18, 2026</td>
-                  <td className="py-4 text-right">
-                    <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full inline-block">
-                      In Progress
-                    </span>
-                  </td>
-                </tr>
+                    <td className="py-4 text-neutral-300">
+                      {bkg.event}
+                    </td>
 
+                    <td className="py-4 text-neutral-400 font-mono text-[11px]">
+                      {bkg.date}
+                    </td>
+
+                    <td className="py-4 text-right">
+                      <span
+                        className={`text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-full border inline-block ${
+                          bkg.statusColor === "emerald"
+                            ? "bg-[#0e241c] text-[#22c55e] border-[#144231]"
+                            : bkg.statusColor === "blue"
+                            ? "bg-[#101e38] text-[#38bdf8] border-[#1a365d]"
+                            : "bg-[#2a1d13] text-[#f59e0b] border-[#482d18]"
+                        }`}
+                      >
+                        {bkg.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Right Column: System Alerts & Quick Links */}
-        <div className="space-y-6">
-          
-          {/* System Alerts */}
-          <div className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 md:p-8 transition-colors h-full flex flex-col">
-            <h3 className="text-sm font-bold tracking-widest uppercase text-neutral-900 dark:text-white flex items-center gap-2 mb-6">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-              System Alerts
-            </h3>
-
-            <div className="space-y-6 flex-1">
-              
-              {/* Alert 1 */}
-              <div className="flex gap-4">
-                <div className="mt-1">
-                  <AlertTriangle size={16} className="text-amber-500" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white">Inventory</h4>
-                    <span className="text-[10px] text-neutral-500">2 hours ago</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                    Sony A7S III (Camera 3) needs scheduled maintenance.
-                  </p>
-                </div>
-              </div>
-
-              {/* Alert 2 */}
-              <div className="flex gap-4">
-                <div className="mt-1">
-                  <AlertTriangle size={16} className="text-red-500" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white">Staff</h4>
-                    <span className="text-[10px] text-neutral-500">5 hours ago</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                    2 staff members called in sick for tomorrow's event.
-                  </p>
-                </div>
-              </div>
-
-              {/* Alert 3 */}
-              <div className="flex gap-4">
-                <div className="mt-1">
-                  <CheckCircle2 size={16} className="text-emerald-500" />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h4 className="text-sm font-bold text-neutral-900 dark:text-white">System</h4>
-                    <span className="text-[10px] text-neutral-500">1 day ago</span>
-                  </div>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                    System backup completed successfully.
-                  </p>
-                </div>
-              </div>
-
+        {/* Right: System Alerts & Quick Links Panel */}
+        <div className="xl:col-span-4 bg-[#0f121a] border border-[#1b212f] rounded-2xl p-7 flex flex-col justify-between space-y-8">
+          <div>
+            <div className="flex items-center gap-2 border-b border-[#1b212f] pb-4 mb-6">
+              <Activity size={16} className="text-red-600" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                System Alerts
+              </h3>
             </div>
 
-            {/* Quick Links Footer inside Alerts Box */}
-            <div className="mt-8 pt-6 border-t border-neutral-200 dark:border-neutral-800">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 mb-4">Quick Links</h4>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setActiveTab("staff")}
-                  className="flex-1 border border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 text-neutral-700 dark:text-neutral-300 text-xs font-bold py-2.5 rounded-lg transition-colors"
-                >
-                  Assign Staff
-                </button>
-                <button 
-                  onClick={() => setActiveTab("inventory")}
-                  className="flex-1 border border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-500 text-neutral-700 dark:text-neutral-300 text-xs font-bold py-2.5 rounded-lg transition-colors"
-                >
-                  Update Gear
-                </button>
-              </div>
+            {/* Alert List */}
+            <div className="space-y-6">
+              {systemAlerts.map((alert) => {
+                const Icon = alert.icon;
+                return (
+                  <div key={alert.id} className="flex items-start gap-3.5">
+                    <div className="mt-0.5 shrink-0">
+                      <Icon size={16} className={alert.iconColor} />
+                    </div>
+                    <div className="space-y-0.5 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-bold text-white">
+                          {alert.type}
+                        </h4>
+                        <span className="text-[10px] text-neutral-500 font-mono">
+                          {alert.time}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-400 leading-relaxed">
+                        {alert.message}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+          </div>
 
+          {/* Quick Links Section */}
+          <div className="border-t border-[#1b212f] pt-6">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-3.5">
+              Quick Links
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab("staff")}
+                className="w-full py-3 rounded-xl bg-[#090b10] hover:bg-[#141824] border border-[#1b212f] text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer text-center"
+              >
+                Assign Staff
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("inventory")}
+                className="w-full py-3 rounded-xl bg-[#090b10] hover:bg-[#141824] border border-[#1b212f] text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer text-center"
+              >
+                Update Gear
+              </button>
+            </div>
           </div>
         </div>
-
       </div>
     </div>
   );

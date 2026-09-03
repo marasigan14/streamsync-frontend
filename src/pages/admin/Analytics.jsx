@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   DollarSign, 
   Calendar, 
@@ -8,25 +8,62 @@ import {
   Activity, 
   BarChart2, 
   Zap,
-  Download
+  Download,
+  X
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid
+} from "recharts";
 
 const Analytics = () => {
-  // Mock Data for Payments Table
+  // Modal state for "View Detailed Analysis"
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Mock Data for Revenue & Bookings Line Chart
+  const revenueBookingsData = [
+    { month: "Jan", revenue: 100000, bookings: 5 },
+    { month: "Feb", revenue: 140000, bookings: 7 },
+    { month: "Mar", revenue: 180000, bookings: 10 },
+    { month: "Apr", revenue: 160000, bookings: 8 },
+    { month: "May", revenue: 200000, bookings: 12 },
+    { month: "Jun", revenue: 0, bookings: 0 },
+    { month: "Jul", revenue: 0, bookings: 0 },
+  ];
+
+  // Mock Data for ARIMA Forecast
+  const arimaData = [
+    { month: "Jan", actual: 100000, forecast: 100000 },
+    { month: "Feb", actual: 140000, forecast: 135000 },
+    { month: "Mar", actual: 180000, forecast: 175000 },
+    { month: "Apr", actual: 160000, forecast: 165000 },
+    { month: "May", actual: 200000, forecast: 195000 },
+    { month: "Jun", actual: null, forecast: 210000 },
+    { month: "Jul", actual: null, forecast: 225000 },
+  ];
+
+  // Equipment Utilization Data
+  const equipData = [
+    { name: "Cameras", inUse: 85, available: 15 },
+    { name: "Audio", inUse: 70, available: 30 },
+    { name: "Lighting", inUse: 65, available: 35 },
+    { name: "Streaming", inUse: 90, available: 10 },
+    { name: "Monitors", inUse: 75, available: 25 },
+  ];
+
+  // Payment Monitor Table Data
   const paymentData = [
     { event: "Tech Summit 2026", client: "TechCorp", amount: "₱100,000", status: "PAID", date: "2026-05-10" },
     { event: "Wedding Livestream", client: "Mario & Juan", amount: "₱45,000", status: "PENDING", date: "2026-05-12" },
     { event: "Corporate Meeting", client: "ABC Corp", amount: "₱75,000", status: "PAID", date: "2026-05-08" },
     { event: "Product Launch", client: "XYZ Inc", amount: "₱120,000", status: "OVERDUE", date: "2026-04-25" },
-  ];
-
-  // Equipment Utilization Data for Bar Chart
-  const equipData = [
-    { name: "Cameras", use: 85, avail: 15 },
-    { name: "Audio", use: 70, avail: 30 },
-    { name: "Lighting", use: 65, avail: 35 },
-    { name: "Streaming", use: 90, avail: 10 },
-    { name: "Monitors", use: 75, avail: 25 },
   ];
 
   const renderStatusBadge = (status) => {
@@ -42,20 +79,34 @@ const Analytics = () => {
     }
   };
 
+  const handleExportCSV = () => {
+    const csvContent = "Event,Client,Amount,Status,Date\n" + 
+      paymentData.map(p => `${p.event},${p.client},${p.amount},${p.status},${p.date}`).join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "STREAMSYNC_Analytics_Report.csv";
+    a.click();
+  };
+
   return (
     <div className="w-full max-w-5xl font-sans text-white space-y-6">
       
       {/* Top Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold uppercase tracking-wide">ANALYTICS DASHBOARD</h1>
-        <button className="flex items-center gap-2 border border-red-900/50 hover:bg-red-950/30 text-red-500 px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors">
-          EXPORT REPORT
+        <button 
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 border border-red-900/50 hover:bg-red-950/30 text-red-500 px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-colors"
+        >
+          <Download size={14} /> EXPORT REPORT
         </button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {/* Card 1 */}
         <div className="bg-[#111111] border border-neutral-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <DollarSign size={16} className="text-green-500" />
@@ -64,7 +115,7 @@ const Analytics = () => {
           <p className="text-[9px] font-bold text-neutral-500 tracking-wider uppercase mb-1">TOTAL REVENUE (YTD)</p>
           <p className="text-2xl font-black">₱810,000</p>
         </div>
-        {/* Card 2 */}
+
         <div className="bg-[#111111] border border-neutral-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <Calendar size={16} className="text-red-500" />
@@ -73,7 +124,7 @@ const Analytics = () => {
           <p className="text-[9px] font-bold text-neutral-500 tracking-wider uppercase mb-1">ACTIVE BOOKINGS</p>
           <p className="text-2xl font-black">13</p>
         </div>
-        {/* Card 3 */}
+
         <div className="bg-[#111111] border border-neutral-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <Box size={16} className="text-blue-500" />
@@ -82,7 +133,7 @@ const Analytics = () => {
           <p className="text-[9px] font-bold text-neutral-500 tracking-wider uppercase mb-1">EQUIPMENT UTILIZATION</p>
           <p className="text-2xl font-black">77%</p>
         </div>
-        {/* Card 4 */}
+
         <div className="bg-[#111111] border border-neutral-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-2">
             <Users size={16} className="text-yellow-500" />
@@ -101,40 +152,17 @@ const Analytics = () => {
           <h3 className="text-xs font-bold flex items-center gap-2 mb-6 uppercase tracking-wider">
             <BarChart2 size={14} className="text-red-600" /> REVENUE & BOOKINGS
           </h3>
-          <div className="relative h-48 w-full border-l border-b border-neutral-800 flex items-end justify-between pb-6 pl-2">
-            {/* Y-Axis Labels */}
-            <div className="absolute left-[-40px] h-full flex flex-col justify-between text-[8px] text-neutral-600 pb-6 pt-1">
-              <span>200,000</span>
-              <span>150,000</span>
-              <span>100,000</span>
-              <span>50,000</span>
-              <span>0</span>
-            </div>
-            {/* Grid Lines */}
-            <div className="absolute inset-0 border-b border-neutral-800/50 bottom-12"></div>
-            <div className="absolute inset-0 border-b border-neutral-800/50 bottom-24"></div>
-            <div className="absolute inset-0 border-b border-neutral-800/50 bottom-36"></div>
-            
-            {/* SVG Lines - Approximating the visual */}
-            <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-              {/* Blue Line (Bookings - flat near bottom) */}
-              <polyline points="0,90 15,90 30,90 45,90 60,90 75,90 90,90" fill="none" stroke="#3b82f6" strokeWidth="1" />
-              {/* Red Line (Revenue) */}
-              <polyline points="0,50 15,30 30,20 45,25 60,10 75,90 90,90" fill="none" stroke="#ff0000" strokeWidth="1.5" />
-              {/* Data points (Red) */}
-              <circle cx="0" cy="50" r="1.5" fill="#ff0000" />
-              <circle cx="15" cy="30" r="1.5" fill="#ff0000" />
-              <circle cx="30" cy="20" r="1.5" fill="#ff0000" />
-              <circle cx="45" cy="25" r="1.5" fill="#ff0000" />
-              <circle cx="60" cy="10" r="1.5" fill="#ff0000" />
-              <circle cx="75" cy="90" r="1.5" fill="#ff0000" />
-              <circle cx="90" cy="90" r="1.5" fill="#ff0000" />
-            </svg>
-            
-            {/* X-Axis Labels */}
-            <div className="absolute bottom-0 left-0 w-full flex justify-between text-[9px] text-neutral-500 pt-2 px-2">
-              <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
-            </div>
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={revenueBookingsData}>
+                <CartesianGrid stroke="#262626" vertical={false} />
+                <XAxis dataKey="month" stroke="#737373" tick={{ fontSize: 9 }} />
+                <YAxis stroke="#737373" tick={{ fontSize: 8 }} tickFormatter={(val) => val.toLocaleString()} />
+                <Tooltip contentStyle={{ backgroundColor: "#161616", borderColor: "#262626", fontSize: "11px" }} />
+                <Line type="monotone" dataKey="revenue" stroke="#ff0000" strokeWidth={2} dot={{ fill: "#ff0000", r: 3 }} />
+                <Line type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={1.5} dot={{ fill: "#3b82f6", r: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
           <div className="flex justify-center gap-6 mt-4 text-[9px] font-bold">
             <span className="flex items-center gap-1 text-red-500"><div className="w-2 h-0.5 bg-red-500"></div> Revenue (₱)</span>
@@ -143,41 +171,22 @@ const Analytics = () => {
         </div>
 
         {/* ARIMA Revenue Forecast Chart */}
-        <div className="bg-[#111111] border border-red-900/30 rounded-xl p-6 relative">
+        <div className="bg-[#111111] border border-red-900/30 rounded-xl p-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-red-900/10 to-transparent pointer-events-none rounded-xl"></div>
           <h3 className="text-xs font-bold flex items-center gap-2 mb-6 uppercase tracking-wider relative z-10">
             <Activity size={14} className="text-red-600" /> ARIMA REVENUE FORECAST
           </h3>
-          <div className="relative h-48 w-full border-l border-b border-neutral-800 flex items-end justify-between pb-6 pl-2 z-10">
-            {/* Y-Axis Labels */}
-            <div className="absolute left-[-40px] h-full flex flex-col justify-between text-[8px] text-neutral-600 pb-6 pt-1">
-              <span>200,000</span>
-              <span>150,000</span>
-              <span>100,000</span>
-              <span>50,000</span>
-              <span>0</span>
-            </div>
-            
-            {/* SVG Lines */}
-            <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-              {/* Green Dotted Line (Forecast) */}
-              <polyline points="0,50 15,35 30,25 45,30 60,15 75,10 90,5" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeDasharray="3,3" />
-              {/* Red Line (Actual) */}
-              <polyline points="0,52 15,40 30,22 45,35 60,12 75,90 90,90" fill="none" stroke="#ff0000" strokeWidth="1.5" />
-              
-              {/* Data points (Green) */}
-              <circle cx="15" cy="35" r="1.5" fill="#22c55e" />
-              <circle cx="30" cy="25" r="1.5" fill="#22c55e" />
-              <circle cx="45" cy="30" r="1.5" fill="#22c55e" />
-              <circle cx="60" cy="15" r="1.5" fill="#22c55e" />
-              <circle cx="75" cy="10" r="1.5" fill="#22c55e" />
-              <circle cx="90" cy="5" r="1.5" fill="#22c55e" />
-            </svg>
-
-            {/* X-Axis Labels */}
-            <div className="absolute bottom-0 left-0 w-full flex justify-between text-[9px] text-neutral-500 pt-2 px-2">
-              <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
-            </div>
+          <div className="h-48 w-full relative z-10">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={arimaData}>
+                <CartesianGrid stroke="#262626" vertical={false} />
+                <XAxis dataKey="month" stroke="#737373" tick={{ fontSize: 9 }} />
+                <YAxis stroke="#737373" tick={{ fontSize: 8 }} tickFormatter={(val) => val.toLocaleString()} />
+                <Tooltip contentStyle={{ backgroundColor: "#161616", borderColor: "#262626", fontSize: "11px" }} />
+                <Line type="monotone" dataKey="actual" stroke="#ff0000" strokeWidth={2} dot={{ fill: "#ff0000", r: 3 }} connectNulls={false} />
+                <Line type="monotone" dataKey="forecast" stroke="#22c55e" strokeWidth={2} strokeDasharray="3 3" dot={{ fill: "#22c55e", r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
           
           <div className="flex justify-center gap-6 mt-3 text-[9px] font-bold z-10 relative">
@@ -204,33 +213,17 @@ const Analytics = () => {
           <Activity size={14} className="text-red-600" /> EQUIPMENT UTILIZATION
         </h3>
         
-        <div className="relative h-48 w-full border-l border-b border-neutral-800 flex items-end justify-around pb-6 pl-8 pr-4">
-           {/* Y-Axis Labels */}
-           <div className="absolute left-[-10px] h-[calc(100%-24px)] flex flex-col justify-between text-[9px] text-neutral-600 pb-1">
-              <span>100</span>
-              <span>75</span>
-              <span>50</span>
-              <span>25</span>
-              <span>0</span>
-            </div>
-            
-            {/* Grid Lines */}
-            <div className="absolute inset-0 border-b border-neutral-800/30 bottom-12 left-8 border-dashed"></div>
-            <div className="absolute inset-0 border-b border-neutral-800/30 bottom-24 left-8 border-dashed"></div>
-            <div className="absolute inset-0 border-b border-neutral-800/30 bottom-36 left-8 border-dashed"></div>
-
-            {/* Bars */}
-            {equipData.map((item, idx) => (
-              <div key={idx} className="flex items-end gap-1 h-full z-10 pb-0.5">
-                <div className="w-8 md:w-12 bg-red-600 rounded-t-sm" style={{ height: `${item.use}%` }}></div>
-                <div className="w-8 md:w-12 bg-blue-500 rounded-t-sm" style={{ height: `${item.avail}%` }}></div>
-              </div>
-            ))}
-
-            {/* X-Axis Labels */}
-            <div className="absolute bottom-0 left-8 right-4 flex justify-around text-[9px] text-neutral-500 pt-2">
-              {equipData.map(item => <span key={item.name} className="w-16 text-center">{item.name}</span>)}
-            </div>
+        <div className="h-48 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={equipData} barGap={4}>
+              <CartesianGrid stroke="#262626" vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="name" stroke="#737373" tick={{ fontSize: 9 }} />
+              <YAxis stroke="#737373" tick={{ fontSize: 9 }} domain={[0, 100]} />
+              <Tooltip contentStyle={{ backgroundColor: "#161616", borderColor: "#262626", fontSize: "11px" }} />
+              <Bar dataKey="inUse" fill="#dc2626" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="available" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="flex justify-center gap-6 mt-4 text-[9px] font-bold">
@@ -276,7 +269,7 @@ const Analytics = () => {
             </thead>
             <tbody className="divide-y divide-neutral-800">
               {paymentData.map((row, idx) => (
-                <tr key={idx} className="text-neutral-300 text-xs">
+                <tr key={idx} className="text-neutral-300 text-xs hover:bg-[#1a1a1a]">
                   <td className="py-4 font-semibold text-white">{row.event}</td>
                   <td className="py-4 text-neutral-400">{row.client}</td>
                   <td className="py-4 font-bold text-white">{row.amount}</td>
@@ -299,10 +292,38 @@ const Analytics = () => {
           <li>Revenue forecast shows 12.5% monthly growth - on track to exceed Q2 targets by 5%.</li>
           <li>Wedding bookings peak in June-August. Allocate additional staff for Saturdays.</li>
         </ul>
-        <button className="bg-black hover:bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-black hover:bg-neutral-900 text-white px-5 py-2.5 rounded-lg text-[10px] font-bold tracking-widest uppercase transition-colors"
+        >
           VIEW DETAILED ANALYSIS
         </button>
       </div>
+
+      {/* Detailed Analysis Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-lg p-6 relative text-white">
+            <button 
+              onClick={() => setIsModalOpen(false)} 
+              className="absolute top-4 right-4 text-neutral-500 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+            <h3 className="text-md font-bold uppercase mb-4 flex items-center gap-2">
+              <Zap size={18} className="text-red-600" /> Comprehensive Predictive Analysis
+            </h3>
+            <div className="space-y-4 text-xs text-neutral-300 leading-relaxed">
+              <p>
+                <strong>ARIMA Model Confidence Interval:</strong> Our model predicts a Q3 revenue velocity peaking at ₱425,000 based on standard linear regression combined with historical seasonal event spikes.
+              </p>
+              <p>
+                <strong>Inventory Risk Score:</strong> High demand for 4K streaming kits during weekend slots could lead to a 15% booking rejection rate without additional unit acquisition.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
