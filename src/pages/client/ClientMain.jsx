@@ -34,27 +34,72 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import logoImage from "../../assets/livestream-logo.png";
 import heroCollage from "../../assets/hero-collage.jpg";
-import leader1 from "../../assets/profile.jpg";
-import leader2 from "../../assets/profile.jpg";
-import leader3 from "../../assets/profile.jpg";
-import leader4 from "../../assets/profile.jpg";
-import promoEarlyBird from "../../assets/testpic.jpg";
-import promoWedding from "../../assets/testpic.jpg";
-import promoWebinar from "../../assets/testpic.jpg";
-import customPackageBg from "../../assets/testpicture.jpg";
+import leader1 from "../../assets/carlo.jpg";
 
-import equipLivestream from "../../assets/testpicture.jpg";
-import equipProjector from "../../assets/testpicture.jpg";
-import equipLights from "../../assets/testpicture.jpg";
-import equipCtaBg from "../../assets/testpicture.jpg";
+import promoEarlyBird from "../../assets/promo-earlybird.jpg";
+import promoWedding from "../../assets/promo-wedding.jpg";
+import promoWebinar from "../../assets/promo-webinar.jpg";
+import customPackageBg from "../../assets/banner1.jpg";
 
-import eventTechSummit from "../../assets/testpicture.jpg";
+import equipLivestream from "../../assets/livestreampkg.jpg";
+import equipProjector from "../../assets/projectorpkg.jpg";
+import equipLights from "../../assets/lightspkg.jpg";
+import equipCtaBg from "../../assets/banner2.jpg";
+
+import eventIlhoon from "../../assets/past1.jpg";
 import eventCorporate from "../../assets/testpicture.jpg";
-import eventLaunch from "../../assets/testpicture.jpg";
+import eventCooperative from "../../assets/past3.jpg";
 import eventEsports from "../../assets/testpicture.jpg";
 import eventFundraiser from "../../assets/testpicture.jpg";
 import eventConcert from "../../assets/testpicture.jpg";
-import eventsCtaBg from "../../assets/testpicture.jpg";
+import eventsCtaBg from "../../assets/banner3.jpg";
+import techsummit from "../../assets/events/techsummit.jpg"
+
+import tvImage from "../../assets/livestream/tvImage.jpg"
+import lsCameras from "../../assets/livestream/cameras.jpg"
+import obsbot from "../../assets/livestream/obsbot.jpg"
+import tricastervp from "../../assets/livestream/tricaster1.jpg"
+import tricastercontroller from "../../assets/livestream/tricaster2.jpg"
+import switcher from "../../assets/livestream/testpicture.jpg"
+import recorder from "../../assets/livestream/testpicture.jpg"
+import commset from "../../assets/livestream/testpicture.jpg"
+import monitors from "../../assets/livestream/testpicture.jpg"
+import streambag from "../../assets/livestream/testpicture.jpg"
+import audiobag from "../../assets/livestream/testpicture.jpg"
+import cameraStand from "../../assets/livestream/testpicture.jpg"
+import ups from "../../assets/livestream/testpicture.jpg"
+
+import projector from "../../assets/projector/testpicture.jpg"
+import projectorStand from "../../assets/projector/testpicture.jpg"
+import projectorScreen from "../../assets/projector/testpicture.jpg"
+import laptop from "../../assets/projector/testpicture.jpg"
+import foldingTable from "../../assets/projector/testpicture.jpg"
+import extensionCord1 from "../../assets/projector/testpicture.jpg"
+import projectorBox from "../../assets/projector/testpicture.jpg"
+
+import micRack from "../../assets/lightsSounds/testpicture.jpg"
+import handheldMic from "../../assets/lightsSounds/testpicture.jpg"
+import audioMixer from "../../assets/lightsSounds/testpicture.jpg"
+import djController from "../../assets/lightsSounds/testpicture.jpg"
+import djStand from "../../assets/lightsSounds/testpicture.jpg"
+import qscSpeakers from "../../assets/lightsSounds/testpicture.jpg"
+import subWoofer from "../../assets/lightsSounds/testpicture.jpg"
+import speakerStand from "../../assets/lightsSounds/testpicture.jpg"
+import micStand from "../../assets/lightsSounds/testpicture.jpg"
+import lightStand from "../../assets/lightsSounds/testpicture.jpg"
+import lyricsStand from "../../assets/lightsSounds/testpicture.jpg"
+import tigerTouch from "../../assets/lightsSounds/testpicture.jpg"
+import ledBar from "../../assets/lightsSounds/testpicture.jpg"
+import ledPar from "../../assets/lightsSounds/testpicture.jpg"
+import headwornMic from "../../assets/lightsSounds/testpicture.jpg"
+import dmxController from "../../assets/lightsSounds/testpicture.jpg"
+import xlrCable from "../../assets/lightsSounds/testpicture.jpg"
+import hdmiCable from "../../assets/lightsSounds/testpicture.jpg"
+import powerCable from "../../assets/lightsSounds/testpicture.jpg"
+import snakeCable from "../../assets/lightsSounds/testpicture.jpg"
+import lanCable from "../../assets/lightsSounds/testpicture.jpg"
+import extensionCord2 from "../../assets/lightsSounds/testpicture.jpg"
+import dmxCables from "../../assets/lightsSounds/testpicture.jpg"
 
 const ClientMain = () => {
   const navigate = useNavigate();
@@ -159,61 +204,61 @@ const ClientMain = () => {
       title: "LIVESTREAM RENTAL",
       subtitle: "Full broadcast-grade production equipment for live streaming events of any scale.",
       items: [
-        { name: "Televisions", desc: "Large-format displays for audience viewing, stage confidence, and production monitoring at events.", price: "₱2,500/day", image: "https://images.unsplash.com/photo-1593784991095-a205069470b6?q=80&w=600&auto=format&fit=crop" },
-        { name: "Cameras", desc: "Professional broadcast-grade cameras delivering crisp, high-definition footage for livestream events.", price: "₱2,500/day", image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=600&auto=format&fit=crop" },
-        { name: "Obsbot Camera", desc: "AI-powered robotic camera with auto-tracking for hands-free speaker and presenter coverage.", price: "₱2,500/day", image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?q=80&w=600&auto=format&fit=crop" },
-        { name: "TriCaster Video Production System", desc: "Industry-leading all-in-one live production system - switching, streaming, recording, and graphics in one unit.", price: "₱15,000/day", image: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?q=80&w=600&auto=format&fit=crop" },
-        { name: "TriCaster Controller", desc: "Dedicated hardware control surface for the TriCaster system, enabling fast and precise live switching.", price: "₱5,000/day", image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop" },
-        { name: "Switcher", desc: "Multi-input video switcher for seamless camera cuts, transitions, and live production control.", price: "₱4,000/day", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=600&auto=format&fit=crop" },
-        { name: "Recorder", desc: "High-quality video recorder for capturing the full broadcast output as a master archive file.", price: "₱2,000/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "Communication Sets", desc: "Intercom headsets and belt packs for seamless crew communication throughout the production.", price: "₱500/day", image: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?q=80&w=600&auto=format&fit=crop" },
-        { name: "Monitors", desc: "Color-accurate production monitors for camera operators and the director to review the live feed.", price: "₱1,500/day", image: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?q=80&w=600&auto=format&fit=crop" },
-        { name: "Stream Bag", desc: "Organized carry bag housing the complete mobile streaming kit for rapid deployment at any venue.", price: "₱600/day", image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?q=80&w=600&auto=format&fit=crop" },
-        { name: "Audio Bag", desc: "Protective bag for audio gear - wireless receivers, microphones, and accessories neatly organized.", price: "₱300/day", image: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=600&auto=format&fit=crop" },
-        { name: "Camera Stand / Tripod", desc: "Heavy-duty fluid head tripods and stands for stable, smooth camera movements during live events.", price: "₱800/day", image: "https://images.unsplash.com/photo-1500634245200-e524567574fb?q=80&w=600&auto=format&fit=crop" },
-        { name: "UPS", desc: "Uninterruptible Power Supply units providing backup power to protect critical equipment during outages.", price: "₱1,500/day", image: "https://images.unsplash.com/photo-1617788138017-80ad40651399?q=80&w=600&auto=format&fit=crop" },
+        { name: "Televisions", desc: "Large-format displays for audience viewing, stage confidence, and production monitoring at events.", price: "₱2,500/day", image: tvImage },
+        { name: "Cameras", desc: "Professional broadcast-grade cameras delivering crisp, high-definition footage for livestream events.", price: "₱2,500/day", image: lsCameras },
+        { name: "Obsbot Camera", desc: "AI-powered robotic camera with auto-tracking for hands-free speaker and presenter coverage.", price: "₱2,500/day", image: obsbot },
+        { name: "TriCaster Video Production System", desc: "Industry-leading all-in-one live production system - switching, streaming, recording, and graphics in one unit.", price: "₱15,000/day", image: tricastervp },
+        { name: "TriCaster Controller", desc: "Dedicated hardware control surface for the TriCaster system, enabling fast and precise live switching.", price: "₱5,000/day", image: tricastercontroller },
+        { name: "Switcher", desc: "Multi-input video switcher for seamless camera cuts, transitions, and live production control.", price: "₱4,000/day", image: switcher },
+        { name: "Recorder", desc: "High-quality video recorder for capturing the full broadcast output as a master archive file.", price: "₱2,000/day", image: recorder },
+        { name: "Communication Sets", desc: "Intercom headsets and belt packs for seamless crew communication throughout the production.", price: "₱500/day", image: commset },
+        { name: "Monitors", desc: "Color-accurate production monitors for camera operators and the director to review the live feed.", price: "₱1,500/day", image: monitors },
+        { name: "Stream Bag", desc: "Organized carry bag housing the complete mobile streaming kit for rapid deployment at any venue.", price: "₱600/day", image: streambag },
+        { name: "Audio Bag", desc: "Protective bag for audio gear - wireless receivers, microphones, and accessories neatly organized.", price: "₱300/day", image: audiobag },
+        { name: "Camera Stand / Tripod", desc: "Heavy-duty fluid head tripods and stands for stable, smooth camera movements during live events.", price: "₱800/day", image: cameraStand },
+        { name: "UPS", desc: "Uninterruptible Power Supply units providing backup power to protect critical equipment during outages.", price: "₱1,500/day", image: ups },
       ]
     },
     projector: {
       title: "PROJECTOR RENTAL",
       subtitle: "Complete projection solutions for presentations, seminars, and corporate events.",
       items: [
-        { name: "Epson Projectors", desc: "High-lumen Epson projectors delivering sharp, vivid images even in well-lit conference and event halls.", price: "₱3,500/day", image: "https://images.unsplash.com/photo-1517502884422-41eaead166d4?q=80&w=600&auto=format&fit=crop" },
-        { name: "Projector Stands", desc: "Adjustable heavy-duty stands for optimal projector placement and angle in any venue layout.", price: "₱500/day", image: "https://images.unsplash.com/photo-1581092335397-9583fe92d232?q=80&w=600&auto=format&fit=crop" },
-        { name: "Projector Screen", desc: "Matte white projection screens in various sizes for crisp, uniform image display at events.", price: "₱1,500/day", image: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?q=80&w=600&auto=format&fit=crop" },
-        { name: "Laptop", desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.", price: "₱2,000/day", image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop" },
-        { name: "Mini Folding Table", desc: "Compact folding tables for positioning the projector and laptop at the correct throw distance.", price: "₱300/day", image: "https://images.unsplash.com/photo-1530685433978-7ef0019b0352?q=80&w=600&auto=format&fit=crop" },
-        { name: "Extension Cord", desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.", price: "₱200/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "Projector Box / Case", desc: "Foam-padded hard cases for safe transport and storage of projectors during deployment.", price: "Included", image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=600&auto=format&fit=crop" },
+        { name: "Epson Projectors", desc: "High-lumen Epson projectors delivering sharp, vivid images even in well-lit conference and event halls.", price: "₱3,500/day", image: projector },
+        { name: "Projector Stands", desc: "Adjustable heavy-duty stands for optimal projector placement and angle in any venue layout.", price: "₱500/day", image: projectorStand },
+        { name: "Projector Screen", desc: "Matte white projection screens in various sizes for crisp, uniform image display at events.", price: "₱1,500/day", image: projectorScreen },
+        { name: "Laptop", desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.", price: "₱2,000/day", image: laptop },
+        { name: "Mini Folding Table", desc: "Compact folding tables for positioning the projector and laptop at the correct throw distance.", price: "₱300/day", image: foldingTable },
+        { name: "Extension Cord", desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.", price: "₱200/day", image: extensionCord1 },
+        { name: "Projector Box / Case", desc: "Foam-padded hard cases for safe transport and storage of projectors during deployment.", price: "Included", image: projectorBox },
       ]
     },
     lights: {
       title: "LIGHTS & SOUNDS",
       subtitle: "Professional audio and dynamic lighting rigs that transform any venue into a stage-ready environment.",
       items: [
-        { name: "Mic Rack", desc: "Organized rack for storing microphones and audio processors during transport and stage setup.", price: "₱100/day", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=600&auto=format&fit=crop" },
-        { name: "Handheld Microphones", desc: "Reliable wireless and wired handheld microphones for presenters, performers, and public speakers.", price: "₱300/day", image: "https://images.unsplash.com/photo-1520523839896-541243729227?q=80&w=600&auto=format&fit=crop" },
-        { name: "DM3 Audio Mixer", desc: "Advanced multi-channel digital mixing console offering professional multichannel audio control for live events.", price: "₱2,500/day", image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=600&auto=format&fit=crop" },
-        { name: "DJ Controller", desc: "Full-featured digital DJ controller for precise mixing, transitions, and music playback at events.", price: "₱3,000/day", image: "https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?q=80&w=600&auto=format&fit=crop" },
-        { name: "DJ Stand", desc: "Adjustable sturdy stand for professional DJ consoles and audio gear arrangement.", price: "₱500/day", image: "https://images.unsplash.com/photo-1581092335397-9583fe92d232?q=80&w=600&auto=format&fit=crop" },
-        { name: "QSC Speakers", desc: "Industry-standard high-output active loudspeakers delivering powerful, crystal-clear audio to any venue.", price: "₱4,500/day", image: "https://images.unsplash.com/photo-1545128485-c400e7702796?q=80&w=600&auto=format&fit=crop" },
-        { name: "QSC Sub-Woofer", desc: "High-powered subwoofers providing deep, impactful bass response ideal for concerts and high-energy events.", price: "₱3,500/day", image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600&auto=format&fit=crop" },
-        { name: "Speaker Stand", desc: "Heavy-duty speaker stands elevating speakers to optimize sound distribution across the audience.", price: "₱500/day", image: "https://images.unsplash.com/photo-1500634245200-e524567574fb?q=80&w=600&auto=format&fit=crop" },
-        { name: "Mic Stands", desc: "Adjustable floor-standing microphone stands designed for flexible performer and speaker positioning.", price: "₱300/day", image: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=600&auto=format&fit=crop" },
-        { name: "Light Stands", desc: "Sturdy telescoping light stands for mounting lighting fixtures at correct heights and angles.", price: "₱300/day", image: "https://images.unsplash.com/photo-1500634245200-e524567574fb?q=80&w=600&auto=format&fit=crop" },
-        { name: "Lyrics Stands", desc: "Dedicated music stands for displaying lyrics, cue cards, or scripts for performers.", price: "₱200/day", image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?q=80&w=600&auto=format&fit=crop" },
-        { name: "Tigertouch Light Controller", desc: "High-performance multi-touch lighting console for programming complex fixtures, chases, and stage lights.", price: "₱8,000/day", image: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=600&auto=format&fit=crop" },
-        { name: "LED Bar", desc: "Vibrant multi-color LED wash bars for creating dynamic wall uplighting and creative stage accent effects.", price: "₱1,500/day", image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=600&auto=format&fit=crop" },
-        { name: "LED Par", desc: "Powerful LED par cans for versatile stage lighting, wash effects, and broad color coverage.", price: "₱800/day", image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=600&auto=format&fit=crop" },
-        { name: "Shure Headworn Microphones", desc: "Shure comfortable headworn microphones offering hands-free vocal clarity for presenters and performers.", price: "₱1,500/day", image: "https://images.unsplash.com/photo-1520523839896-541243729227?q=80&w=600&auto=format&fit=crop" },
-        { name: "DMX Light Controller", desc: "Professional live lighting console for programming cues, static chases, and intricate stage lighting evolution.", price: "₱3,500/day", image: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=600&auto=format&fit=crop" },
-        { name: "XLR Cables", desc: "Professional-grade XLR cables ensuring noise-free and reliable audio signal transmission.", price: "₱200/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "HDMI Cables", desc: "High-speed HDMI cables delivering crystal-clear video signal playback across monitors and displays.", price: "₱200/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "Power Cables", desc: "Heavy-duty power distribution cables safely supplying electricity to all audio and lighting gear.", price: "₱150/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "Snake Cable", desc: "Multi-channel stage audio snake box streamlining complex multi-microphone cable runs.", price: "₱500/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "LAN Cables", desc: "Reliable networking cables facilitating high-speed data transmission for switchers and streaming gear.", price: "₱150/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "Extension Cords", desc: "Durable electrical extension cords for safely powering audio and lighting equipment throughout the venue.", price: "₱200/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
-        { name: "DMX Cables", desc: "Specialized DMX data cables ensuring precise digital lighting signal transmission from lighting controllers and fixtures.", price: "₱150/day", image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop" },
+        { name: "Mic Rack", desc: "Organized rack for storing microphones and audio processors during transport and stage setup.", price: "₱100/day", image: micRack },
+        { name: "Handheld Microphones", desc: "Reliable wireless and wired handheld microphones for presenters, performers, and public speakers.", price: "₱300/day", image: handheldMic },
+        { name: "DM3 Audio Mixer", desc: "Advanced multi-channel digital mixing console offering professional multichannel audio control for live events.", price: "₱2,500/day", image: audioMixer },
+        { name: "DJ Controller", desc: "Full-featured digital DJ controller for precise mixing, transitions, and music playback at events.", price: "₱3,000/day", image: djController },
+        { name: "DJ Stand", desc: "Adjustable sturdy stand for professional DJ consoles and audio gear arrangement.", price: "₱500/day", image: djStand },
+        { name: "QSC Speakers", desc: "Industry-standard high-output active loudspeakers delivering powerful, crystal-clear audio to any venue.", price: "₱4,500/day", image: qscSpeakers },
+        { name: "QSC Sub-Woofer", desc: "High-powered subwoofers providing deep, impactful bass response ideal for concerts and high-energy events.", price: "₱3,500/day", image: subWoofer },
+        { name: "Speaker Stand", desc: "Heavy-duty speaker stands elevating speakers to optimize sound distribution across the audience.", price: "₱500/day", image: speakerStand },
+        { name: "Mic Stands", desc: "Adjustable floor-standing microphone stands designed for flexible performer and speaker positioning.", price: "₱300/day", image: micStand },
+        { name: "Light Stands", desc: "Sturdy telescoping light stands for mounting lighting fixtures at correct heights and angles.", price: "₱300/day", image: lightStand },
+        { name: "Lyrics Stands", desc: "Dedicated music stands for displaying lyrics, cue cards, or scripts for performers.", price: "₱200/day", image: lyricsStand},
+        { name: "Tigertouch Light Controller", desc: "High-performance multi-touch lighting console for programming complex fixtures, chases, and stage lights.", price: "₱8,000/day", image: tigerTouch },
+        { name: "LED Bar", desc: "Vibrant multi-color LED wash bars for creating dynamic wall uplighting and creative stage accent effects.", price: "₱1,500/day", image: ledBar },
+        { name: "LED Par", desc: "Powerful LED par cans for versatile stage lighting, wash effects, and broad color coverage.", price: "₱800/day", image: ledPar },
+        { name: "Shure Headworn Microphones", desc: "Shure comfortable headworn microphones offering hands-free vocal clarity for presenters and performers.", price: "₱1,500/day", image: headwornMic },
+        { name: "DMX Light Controller", desc: "Professional live lighting console for programming cues, static chases, and intricate stage lighting evolution.", price: "₱3,500/day", image: dmxController },
+        { name: "XLR Cables", desc: "Professional-grade XLR cables ensuring noise-free and reliable audio signal transmission.", price: "₱200/day", image: xlrCable },
+        { name: "HDMI Cables", desc: "High-speed HDMI cables delivering crystal-clear video signal playback across monitors and displays.", price: "₱200/day", image: hdmiCable },
+        { name: "Power Cables", desc: "Heavy-duty power distribution cables safely supplying electricity to all audio and lighting gear.", price: "₱150/day", image: powerCable },
+        { name: "Snake Cable", desc: "Multi-channel stage audio snake box streamlining complex multi-microphone cable runs.", price: "₱500/day", image: snakeCable },
+        { name: "LAN Cables", desc: "Reliable networking cables facilitating high-speed data transmission for switchers and streaming gear.", price: "₱150/day", image: lanCable },
+        { name: "Extension Cords", desc: "Durable electrical extension cords for safely powering audio and lighting equipment throughout the venue.", price: "₱200/day", image: extensionCord2 },
+        { name: "DMX Cables", desc: "Specialized DMX data cables ensuring precise digital lighting signal transmission from lighting controllers and fixtures.", price: "₱150/day", image: dmxCables },
       ]
     }
   };
@@ -528,48 +573,30 @@ const ClientMain = () => {
               </div>
             </div>
 
-            {/* --- LEADERSHIP TEAM --- */}
+            {/* --- OWNER --- */}
             <div className="mt-16 md:mt-20">
               <h3 className="text-2xl md:text-3xl font-black tracking-wide uppercase text-center mb-10 text-white">
-                Leadership Team
+                OWNED BY 
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex justify-center">
                 {[
                   {
                     image: leader1,
-                    name: "Maria Santos",
+                    name: "Carlos S. Garcia",
                     role: "Founder & CEO",
-                    bio: "15+ years in broadcast and live production",
-                  },
-                  {
-                    image: leader2,
-                    name: "Juan Dela Cruz",
-                    role: "Technical Director",
-                    bio: "Former broadcast engineer with major networks",
-                  },
-                  {
-                    image: leader3,
-                    name: "Lisa Reyes",
-                    role: "Creative Director",
-                    bio: "Award-winning producer and content creator",
-                  },
-                  {
-                    image: leader4,
-                    name: "Mark Lim",
-                    role: "Operations Manager",
-                    bio: "Logistics expert ensuring flawless execution",
+                    bio: "Tech Enthusiast - Events Management",
                   },
                 ].map((leader, i) => (
                   <div
                     key={i}
-                    className="bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1.5 hover:border-red-600/50 hover:shadow-[0_12px_30px_rgba(255,0,0,0.12)] cursor-pointer"
+                    className="w-full max-w-sm bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1.5 hover:border-red-600/50 hover:shadow-[0_12px_30px_rgba(255,0,0,0.12)] cursor-pointer"
                   >
                     <div className="w-24 h-24 mx-auto mb-4 rounded-full p-[2px] bg-red-600/30">
                       <img
                         src={leader.image}
                         alt={leader.name}
-                        className="w-full h-full rounded-full object-cover grayscale"
+                        className="w-full h-full rounded-full object-cover"
                       />
                     </div>
 
@@ -592,115 +619,115 @@ const ClientMain = () => {
         </section>
 
         {/* --- PROMOS SECTION --- */}
-        <section
-          id="promos"
-          className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
+<section
+  id="promos"
+  className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
+>
+  <div className="max-w-7xl mx-auto px-6">
+    <div className="text-center max-w-2xl mx-auto mb-14">
+      <span className="text-red-500 text-xs md:text-sm font-bold tracking-[0.16em] uppercase">
+        Special Offers
+      </span>
+      <h2 className="text-white text-3xl md:text-4xl font-extrabold mt-2 mb-4">
+        Current Promotions
+      </h2>
+      <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
+        Take advantage of our exclusive deals and make your next event
+        extraordinary while saving on professional livestreaming
+        services.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[
+        {
+          icon: Clock,
+          title: "Early Bird Event Package",
+          desc: "Book your event 3 months in advance and get a 15% discount on our full-service livestreaming package.",
+          code: "EARLYBIRD15",
+          date: "Dec 31, 2026",
+          image: promoEarlyBird,
+        },
+        {
+          icon: Gift,
+          title: "Wedding Season Special",
+          desc: "Complete wedding coverage including drone shots, multi-cam setup, and highlight reel. Save ₱10,000 when you book this month.",
+          code: "WEDDING2026",
+          date: "Aug 31, 2026",
+          image: promoWedding,
+        },
+        {
+          icon: Tag,
+          title: "Corporate Webinar Bundle",
+          desc: "Includes studio rental, professional lighting, multi-cam switching, and custom graphics overlay. Get 1 hour free setup time.",
+          code: "CORPSTREAM",
+          date: "Oct 15, 2026",
+          image: promoWebinar,
+        },
+      ].map((promo, i) => (
+        <div
+          key={i}
+          className="group relative bg-[#141414] border border-[#253147] rounded-2xl overflow-hidden font-['Poppins',sans-serif] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_32px_rgba(255,0,0,0.18)] cursor-pointer"
         >
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center max-w-2xl mx-auto mb-14">
-              <span className="text-red-500 text-xs md:text-sm font-bold tracking-[0.16em] uppercase">
-                Special Offers
-              </span>
-              <h2 className="text-white text-3xl md:text-4xl font-extrabold mt-2 mb-4">
-                Current Promotions
-              </h2>
-              <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
-                Take advantage of our exclusive deals and make your next event
-                extraordinary while saving on professional livestreaming
-                services.
+          {/* Image container with scale & dark overlay adjustment */}
+          <div className="relative h-44 overflow-hidden bg-neutral-900">
+            <img
+              src={promo.image}
+              alt={promo.title}
+              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-black/35 group-hover:bg-black/20 transition-colors duration-300" />
+            <span className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+              Limited Time
+            </span>
+          </div>
+
+          <div className="p-6">
+            {/* Header: Icon scale + Title color shift */}
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center mt-0.5 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
+                <promo.icon size={15} className="transition-transform duration-300 group-hover:rotate-6" />
+              </div>
+              <h3 className="text-white text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-red-500">
+                {promo.title}
+              </h3>
+            </div>
+
+            <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 min-h-[60px] transition-colors duration-200 group-hover:text-neutral-300">
+              {promo.desc}
+            </p>
+
+            {/* Promo Code box */}
+            <div className="bg-black border border-[#2b2b2b] rounded-lg px-4 py-3 mb-4 transition-all duration-300 group-hover:border-red-600/40">
+              <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
+                Promo Code:
+              </p>
+              <p className="text-white text-base font-extrabold tracking-[0.08em] transition-colors duration-300 group-hover:text-red-400">
+                {promo.code}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[
-                {
-                  icon: Clock,
-                  title: "Early Bird Event Package",
-                  desc: "Book your event 3 months in advance and get a 15% discount on our full-service livestreaming package.",
-                  code: "EARLYBIRD15",
-                  date: "Dec 31, 2026",
-                  image: promoEarlyBird,
-                },
-                {
-                  icon: Gift,
-                  title: "Wedding Season Special",
-                  desc: "Complete wedding coverage including drone shots, multi-cam setup, and highlight reel. Save ₱10,000 when you book this month.",
-                  code: "WEDDING2026",
-                  date: "Aug 31, 2026",
-                  image: promoWedding,
-                },
-                {
-                  icon: Tag,
-                  title: "Corporate Webinar Bundle",
-                  desc: "Includes studio rental, professional lighting, multi-cam switching, and custom graphics overlay. Get 1 hour free setup time.",
-                  code: "CORPSTREAM",
-                  date: "Oct 15, 2026",
-                  image: promoWebinar,
-                },
-              ].map((promo, i) => (
-                <div
-                  key={i}
-                  className="group relative bg-[#141414] border border-[#253147] rounded-2xl overflow-hidden font-['Poppins',sans-serif] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_32px_rgba(255,0,0,0.18)] cursor-pointer"
-                >
-                  {/* Image container with scale & dark overlay adjustment */}
-                  <div className="relative h-44 overflow-hidden bg-neutral-900">
-                    <img
-                      src={promo.image}
-                      alt={promo.title}
-                      className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/35 group-hover:bg-black/20 transition-colors duration-300" />
-                    <span className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
-                      Limited Time
-                    </span>
-                  </div>
-
-                  <div className="p-6">
-                    {/* Header: Icon scale + Title color shift */}
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center mt-0.5 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
-                        <promo.icon size={15} className="transition-transform duration-300 group-hover:rotate-6" />
-                      </div>
-                      <h3 className="text-white text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-red-500">
-                        {promo.title}
-                      </h3>
-                    </div>
-
-                    <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 min-h-[60px] transition-colors duration-200 group-hover:text-neutral-300">
-                      {promo.desc}
-                    </p>
-
-                    {/* Promo Code box */}
-                    <div className="bg-black border border-[#2b2b2b] rounded-lg px-4 py-3 mb-4 transition-all duration-300 group-hover:border-red-600/40">
-                      <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
-                        Promo Code:
-                      </p>
-                      <p className="text-white text-base font-extrabold tracking-[0.08em] transition-colors duration-300 group-hover:text-red-400">
-                        {promo.code}
-                      </p>
-                    </div>
-
-                    <div className="border-t border-[#293245] pt-4 flex items-center justify-between">
-                      <span className="text-xs text-neutral-500 flex items-center gap-1.5 transition-colors duration-200 group-hover:text-neutral-400">
-                        <Clock size={12} className="text-red-500" /> Valid until {promo.date}
-                      </span>
-                      <button
-                        onClick={() =>
-                          document
-                            .getElementById("contact")
-                            ?.scrollIntoView({ behavior: "smooth" })
-                        }
-                        className="text-red-500 hover:text-red-400 text-xs font-semibold inline-flex items-center gap-1 transition-transform duration-200 group-hover:translate-x-1 cursor-pointer"
-                      >
-                        Book Now →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="border-t border-[#293245] pt-4 flex items-center justify-between">
+              <span className="text-xs text-neutral-500 flex items-center gap-1.5 transition-colors duration-200 group-hover:text-neutral-400">
+                <Clock size={12} className="text-red-500" /> Valid until {promo.date}
+              </span>
+              <button
+                onClick={() =>
+                  document
+                    .getElementById("contact")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="text-red-500 hover:text-red-400 text-xs font-semibold inline-flex items-center gap-1 transition-transform duration-200 group-hover:translate-x-1 cursor-pointer"
+              >
+                Book Now →
+              </button>
             </div>
           </div>
-        </section>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
 
         {/* --- SERVICES SECTION --- */}
         <section
@@ -778,17 +805,6 @@ const ClientMain = () => {
                   ],
                 },
                 {
-                  icon: Search,
-                  title: "CONTENT CREATION",
-                  desc: "Creative content production for social media and marketing.",
-                  feats: [
-                    "Social media videos",
-                    "Promotional content",
-                    "Testimonials",
-                    "Training videos",
-                  ],
-                },
-                {
                   icon: Users,
                   title: "HYBRID EVENTS",
                   desc: "Seamlessly combine in-person and virtual attendance.",
@@ -850,7 +866,7 @@ const ClientMain = () => {
               ))}
             </div>
 
-            {/* Custom Package CTA with hover glow */}
+            {/* BANNER 1 */}
             <div className="mt-12">
               <div
                 className="group/cta relative overflow-hidden rounded-2xl border border-red-600/70 min-h-[190px] flex items-center justify-center text-center px-6 transition-all duration-300 hover:border-red-500 hover:shadow-[0_10px_35px_rgba(255,0,0,0.22)]"
@@ -1235,31 +1251,31 @@ const ClientMain = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           {
-            tag: "CONFERENCE",
-            title: "TECH SUMMIT 2026",
-            desc: "Three-day technology conference with multiple stages and breakout sessions.",
-            date: "March 15, 2026",
-            location: "SMX Convention Center",
+            tag: "CONCERT",
+            title: "Jung Il-hoon's Art Class Concert",
+            desc: "Il-hoons first concert in the Philippines.",
+            date: "July 22, 2026",
+            location: "SM Skydome ",
             attendees: "5,000+ attendees",
-            image: eventTechSummit,
+            image: eventIlhoon,
           },
           {
-            tag: "CORPORATE",
-            title: "CORPORATE ANNUAL MEETING",
-            desc: "Hybrid annual shareholders meeting with live Q&A and voting.",
-            date: "February 28, 2026",
-            location: "Makati Shangri-La",
-            attendees: "500 attendees",
-            image: eventCorporate,
+            tag: "CONFERENCE",
+            title: "ASEAN Tech Summit 2026",
+            desc: "Tech Summit for this year.",
+            date: "July 28-29, 2026",
+            location: "Prohibited",
+            attendees: "Prohibited",
+            image: techsummit,
           },
           {
-            tag: "LAUNCH EVENT",
-            title: "PRODUCT LAUNCH – FASHION BRAND",
-            desc: "High-end fashion show with multi-camera livestream to global audience.",
-            date: "January 20, 2026",
-            location: "BGC Arts Center",
-            attendees: "1,200 attendees",
-            image: eventLaunch,
+            tag: "COOPERATIVE",
+            title: "Batangas Electric Cooperative Assembly",
+            desc: "7 Location Livestreaming done for Batangas Electric Cooperative.",
+            date: "April 06, 2026",
+            location: "Different parts of Batangas",
+            attendees: "1,000+ attendees",
+            image: eventCooperative,
           },
           {
             tag: "ESPORTS",
