@@ -294,33 +294,58 @@ useEffect(() => {
     setSubmitting(true);
 
     try {
+      if (statusType === "draft") {
+        // No `draft` status exists in the bookings table yet — not wired up.
+        setActionSuccess("Draft saving isn't available yet — coming soon!");
+        setSubmitting(false);
+        return;
+      }
+
+      // selectedServices holds service IDs (from the `services` table) — convert
+      // to human-readable titles for the backend's notes field.
+      const serviceTitles = selectedServices
+        .map((id) => availableServices.find((s) => s.id === id)?.title)
+        .filter(Boolean);
+
       const payload = {
-        user_id: userData.id,
         event_name: eventName || "Untitled Event Draft",
         event_type: eventType,
-        client_type: clientType,
-        start_date: startDate || null,
-        end_date: endDate || startDate || null,
+        start_date: startDate,
+        end_date: endDate || startDate,
         venue: venue,
         estimated_guests: estimatedGuests ? parseInt(estimatedGuests) : null,
         special_notes: specialNotes,
-        services: selectedServices,
+        services: serviceTitles,
         equipment: selectedEquipment,
-        payment_method: paymentMethod,
-        reference_number: referenceNumber,
         status: statusType,
-        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("bookings").insert([payload]);
-      if (error) throw error;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("You must be logged in to submit a booking.");
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/bookings/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to submit booking.");
+      }
 
       if (statusType === "submitted") {
         setActionSuccess("Your booking request has been submitted! Our team will review it.");
       } else if (statusType === "pencil_booked") {
         setActionSuccess("Tentative dates saved! Your pencil booking has been recorded.");
-      } else {
-        setActionSuccess("Draft successfully saved! You can resume this booking anytime.");
       }
 
       setTimeout(() => {

@@ -3,9 +3,6 @@
 /* This forces Tailwind v4 to listen to our Sun/Moon button instead of your OS settings */
 @variant dark (&:where(.dark, .dark *));
 
-/* 1. Import Poppins from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-
 body {
   font-family: 'Poppins', sans-serif;
 }

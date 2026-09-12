@@ -10,6 +10,8 @@ import {
   EyeOff,
 } from "lucide-react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -22,6 +24,7 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
     },
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
 
   // Dragging states
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -42,7 +45,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
 
   // Handle Dragging Logic
   const handleMouseDown = (e) => {
-    // Only allow dragging from header element itself (not buttons/inputs)
     if (e.target.closest("button") || e.target.closest("input")) return;
 
     setIsDragging(true);
@@ -89,32 +91,33 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
     return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  // Calls the real StreamSync backend chatbot endpoint
   const generateBotResponse = async (userText) => {
-    const query = userText.toLowerCase().trim();
+    try {
+      const response = await fetch(`${API_URL}/chatbot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userText,
+          session_id: sessionId,
+        }),
+      });
 
-    if (query.includes("event") || query.includes("services") || query.includes("offer")) {
-      return "We offer full live production services including: Live Event Streaming, Video Production, Audio Engineering, Virtual Events (Zoom/Teams), Webinar Production, and Hybrid Broadcasts!";
-    }
-    if (query.includes("book") || query.includes("reserve") || query.includes("schedule")) {
-      return "You can book directly by clicking 'Book Service' in the sidebar or 'Book Now' on your overview screen. We offer Submit Request, Pencil Book (tentative hold), and Save Draft options.";
-    }
-    if (query.includes("price") || query.includes("cost") || query.includes("rate") || query.includes("package")) {
-      return "Our packages start at: Livestream Package (₱25,000/day), Projector Package (₱8,000/day), and Lights & Sounds Package (₱18,000/day). You can also customize your equipment in the booking catalog!";
-    }
-    if (query.includes("downpayment") || query.includes("payment") || query.includes("gcash") || query.includes("maya") || query.includes("bdo")) {
-      return "We accept downpayments via GCash, Maya, and BDO Bank transfer. Minimum downpayments: ₱2,000 for Livestream, ₱500 for Projectors, and ₱1,500 for Lights & Sounds.";
-    }
-    if (query.includes("cancel") || query.includes("refund") || query.includes("policy")) {
-      return "Cancellations made 30+ days prior receive a full refund minus a 10% admin fee. 15-29 days prior receive 50%. Less than 15 days is non-refundable, but dates can be rescheduled within 90 days.";
-    }
-    if (query.includes("pencil") || query.includes("tentative")) {
-      return "Pencil Book reservations temporarily hold your calendar dates for up to 72 hours while you finalize event schedules!";
-    }
-    if (query.includes("hello") || query.includes("hi") || query.includes("hey")) {
-      return "Hi there! Looking for equipment rentals, booking assistance, or package quotations?";
-    }
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
 
-    return "I'm sorry, I didn't quite catch that. Could you please rephrase?";
+      const data = await response.json();
+
+      if (!sessionId) {
+        setSessionId(data.session_id);
+      }
+
+      return data.reply;
+    } catch (error) {
+      console.error("Chatbot request failed:", error);
+      return "Sorry, I'm having trouble connecting right now. Please try again in a moment.";
+    }
   };
 
   const handleSendMessage = async (e) => {
@@ -133,17 +136,15 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
     setInputValue("");
     setIsTyping(true);
 
-    setTimeout(async () => {
-      const reply = await generateBotResponse(currentInput);
-      const botMsg = {
-        id: Date.now() + 1,
-        sender: "bot",
-        text: reply,
-        time: getCurrentTime(),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 600);
+    const reply = await generateBotResponse(currentInput);
+    const botMsg = {
+      id: Date.now() + 1,
+      sender: "bot",
+      text: reply,
+      time: getCurrentTime(),
+    };
+    setMessages((prev) => [...prev, botMsg]);
+    setIsTyping(false);
   };
 
   return (
@@ -156,12 +157,10 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
         isDragging ? "cursor-grabbing opacity-95 shadow-[0_0_30px_rgba(255,0,0,0.3)]" : ""
       } ${isMinimized ? "h-[68px]" : "h-[580px]"}`}
     >
-      {/* Draggable Header Bar */}
       <div
         onMouseDown={handleMouseDown}
         className="px-5 py-4 bg-[#0a0c12] border-b border-[#181f2e] flex items-center justify-between shrink-0 cursor-grab active:cursor-grabbing relative"
       >
-        {/* Subtle Grip Handle indicator */}
         <div className="absolute top-1 left-1/2 -translate-x-1/2 text-neutral-700 pointer-events-none">
           <GripHorizontal size={14} />
         </div>
@@ -181,9 +180,7 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
           </div>
         </div>
 
-        {/* Controls */}
         <div className="flex items-center gap-1 text-neutral-400">
-          {/* Hide/Remove Floating Assistant completely */}
           <button
             type="button"
             onClick={onDismissCompletely}
@@ -193,7 +190,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
             <EyeOff size={16} />
           </button>
 
-          {/* Minimize / Maximize */}
           <button
             type="button"
             onClick={() => setIsMinimized(!isMinimized)}
@@ -203,7 +199,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
             {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
           </button>
 
-          {/* Close modal only */}
           <button
             type="button"
             onClick={onClose}
@@ -217,7 +212,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
 
       {!isMinimized && (
         <>
-          {/* Chat Body */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs select-text">
             {messages.map((msg) => {
               const isBot = msg.sender === "bot";
@@ -256,7 +250,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
               );
             })}
 
-            {/* Typing Indicator */}
             {isTyping && (
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-red-950/40 border border-red-800/40 flex items-center justify-center text-red-500 shrink-0">
@@ -272,7 +265,6 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer Input */}
           <div className="p-4 bg-[#0a0c12] border-t border-[#181f2e] space-y-2">
             <form onSubmit={handleSendMessage} className="relative flex items-center">
               <input

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+const API_URL = import.meta.env.VITE_API_URL;
 import {
   Search,
   Plus,
@@ -39,43 +40,43 @@ const Inventory = () => {
   const [calendarDate, setCalendarDate] = useState(new Date(2026, 5, 1));
 
   // Master Inventory Dataset matching image_e83ee7.jpg
-  const [inventoryList, setInventoryList] = useState([
-    { id: 1, name: "Sony FX3 Camera", category: "LIVESTREAM", availability: "4/5", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 2, name: "Cameras", category: "LIVESTREAM", availability: "2/3", status: "MAINTENANCE", lastCheck: "2026-05-19", statusColor: "amber" },
-    { id: 3, name: "Obsbot Camera", category: "LIVESTREAM", availability: "1/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 4, name: "TriCaster Video Production System", category: "LIVESTREAM", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 5, name: "TriCaster Controller", category: "LIVESTREAM", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 6, name: "Switcher", category: "LIVESTREAM", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 7, name: "Recorder", category: "LIVESTREAM", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 8, name: "Communication Sets", category: "LIVESTREAM", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 9, name: "Monitors", category: "LIVESTREAM", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 10, name: "Epson Projector", category: "PROJECTOR", availability: "2/3", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 11, name: "Standing", category: "PROJECTOR", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 12, name: "Camera Stand / Tripod", category: "PROJECTOR", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 13, name: "Screen", category: "PROJECTOR", availability: "1/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 14, name: "Epson Projectors", category: "PROJECTOR", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 15, name: "Projector Stands", category: "PROJECTOR", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 16, name: "Projector Screens", category: "PROJECTOR", availability: "1/1", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 17, name: "Laptop", category: "PROJECTOR", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 18, name: "Wireless Clicker", category: "PROJECTOR", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 19, name: "Wireless Data Transceiver", category: "PROJECTOR", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 20, name: "Projector Mount Clamps", category: "PROJECTOR", availability: "4/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 21, name: "HDMI Cable (15m/20m)", category: "CABLE", availability: "2/3", status: "DEPLOYED", lastCheck: "2026-05-19", statusColor: "blue" },
-    { id: 22, name: "Power Extension Cables", category: "CABLE", availability: "4/5", status: "DEPLOYED", lastCheck: "2026-05-19", statusColor: "blue" },
-    { id: 23, name: "DMX Cable (10m)", category: "CABLE", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 24, name: "XLR Audio Cable (5m/10m)", category: "CABLE", availability: "6/8", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 25, name: "CAT6 Network Cables", category: "CABLE", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 26, name: "SDI Cables (20m)", category: "CABLE", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 27, name: "QSC Subwoofer KS118", category: "AUDIO", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 28, name: "QSC Speakers", category: "AUDIO", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 29, name: "Speaker Stand", category: "AUDIO", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 30, name: "Mic Stand", category: "AUDIO", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 31, name: "DM3 Digital Console", category: "AUDIO", availability: "1/1", status: "DEPLOYED", lastCheck: "2026-05-18", statusColor: "blue" },
-    { id: 32, name: "Sennheiser Wireless Mic", category: "AUDIO", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 33, name: "Tigertouch Light Controller", category: "LIGHTING", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 34, name: "LED Par", category: "LIGHTING", availability: "8/12", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 35, name: "Moving Head Light", category: "LIGHTING", availability: "2/4", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-  ]);
+   // Master Inventory Dataset — fetched live from StreamSync API
+  const [inventoryList, setInventoryList] = useState([]);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch(`${API_URL}/equipment`);
+        const data = await response.json();
+
+        const statusMap = {
+          available: { label: "AVAILABLE", color: "emerald" },
+          in_use: { label: "DEPLOYED", color: "blue" },
+          under_maintenance: { label: "MAINTENANCE", color: "amber" },
+          retired: { label: "RETIRED", color: "neutral" },
+        };
+
+        const transformed = data.map((item) => {
+          const statusInfo = statusMap[item.status] || statusMap.available;
+          return {
+            id: item.id,
+            name: item.name,
+            category: item.equipment_categories?.name?.toUpperCase() || "UNCATEGORIZED",
+            availability: `${item.available_quantity}/${item.total_quantity}`,
+            status: statusInfo.label,
+            statusColor: statusInfo.color,
+            lastCheck: item.updated_at?.split("T")[0] || "N/A",
+          };
+        });
+
+        setInventoryList(transformed);
+      } catch (error) {
+        console.error("Failed to fetch inventory:", error);
+      }
+    };
+
+    fetchInventory();
+  }, []);
 
   // Condition Logs dataset matching image_e83eef.jpg
   const [logsList, setLogsList] = useState([
