@@ -245,29 +245,49 @@ useEffect(() => {
     );
   };
 
-  // AI Recommendation Engine
-  const generateAiRecommendation = () => {
-    const type = eventType || "General Event";
-    const attendees = parseInt(estimatedGuests) || 100;
+  // AI Recommendation Engine (FR-03) — calls the real backend, grounded in
+  // the actual equipment catalog and historical booking data.
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [aiReasoning, setAiReasoning] = useState("");
+  const [aiBasedOnHistory, setAiBasedOnHistory] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
 
-    let cost = "₱25,000";
-    let pkg = "Livestream Package";
-    let text = `For a ${type.toLowerCase()} with ${attendees} attendees, you'll need a professional livestream setup. The Livestream Package includes cameras, TriCaster system, and streaming equipment. We've added a laptop for presentation slides and handheld microphones for presenters.`;
+  const fetchAiSuggestions = async () => {
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const response = await fetch("http://127.0.0.1:8000/equipment-ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_type: eventType,
+          estimated_guests: estimatedGuests ? parseInt(estimatedGuests) : null,
+          venue: venue || null,
+        }),
+      });
 
-    if (type.includes("Concert") || attendees > 500) {
-      cost = "₱43,000";
-      pkg = "Lights & Sounds Package";
-      text = `Large attendance (${attendees} attendees) requires reinforced stage audio and multi-tier lighting. We recommend combining the Lights & Sounds Package with full broadcast cameras.`;
-    } else if (type.includes("Conference") || type.includes("Seminar")) {
-      cost = "₱33,000";
-      pkg = "Projector Package";
-      text = `Conference proceedings benefit from dedicated presentation display arrays. We recommend the Projector Package paired with the Livestream rig.`;
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to get AI suggestions.");
+      }
+
+      const data = await response.json();
+      setAiSuggestions(data.recommended_equipment || []);
+      setAiReasoning(data.reasoning || "");
+      setAiBasedOnHistory(data.based_on_history);
+    } catch (err) {
+      setAiError(err.message || "Something went wrong getting suggestions.");
+      setAiSuggestions([]);
+    } finally {
+      setAiLoading(false);
     }
-
-    return { type, attendees, cost, pkg, text };
   };
 
-  const aiRec = generateAiRecommendation();
+  const openAiModal = () => {
+    setShowAiModal(true);
+    fetchAiSuggestions();
+  };
 
   // Booking Dispatch Handler
   const handleBookingAction = async (statusType) => {
@@ -497,7 +517,7 @@ useEffect(() => {
               {/* AI Trigger Button */}
               <button
                 type="button"
-                onClick={() => setShowAiModal(true)}
+                onClick={openAiModal}
                 className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black uppercase tracking-wider transition-all duration-200 shadow-lg shadow-purple-600/30 hover:scale-105 cursor-pointer"
               >
                 <Sparkles size={15} />
@@ -1137,79 +1157,94 @@ useEffect(() => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
               {/* Event Analysis Metric Strip */}
               <div className="bg-[#090b10] border border-[#1c2233] rounded-xl p-4">
                 <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 flex items-center gap-1.5 mb-3">
                   <span>📈</span> Event Analysis
                 </span>
-                <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <span className="text-[10px] text-neutral-500 uppercase block">Event Type</span>
-                    <span className="text-xs font-bold text-white truncate block">{aiRec.type}</span>
+                    <span className="text-xs font-bold text-white truncate block">{eventType}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-500 uppercase block">Attendees</span>
-                    <span className="text-xs font-bold text-white block">{aiRec.attendees}</span>
+                    <span className="text-xs font-bold text-white block">{estimatedGuests || "—"}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-neutral-500 uppercase block">Budget Range</span>
-                    <span className="text-xs font-bold text-neutral-400 block">Not set</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-neutral-500 uppercase block">Est. Cost</span>
-                    <span className="text-xs font-black text-purple-400 block">{aiRec.cost}</span>
+                    <span className="text-[10px] text-neutral-500 uppercase block">Data Source</span>
+                    <span className="text-xs font-bold text-white block">
+                      {aiBasedOnHistory ? "Past Events" : "General"}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* AI Written Recommendation Box */}
-              <div className="bg-[#090b10] border border-[#1c2233] rounded-xl p-4 space-y-1.5">
-                <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block">
-                  AI Recommendation
-                </span>
-                <p className="text-xs text-neutral-300 leading-relaxed font-normal">
-                  {aiRec.text}
+              {aiLoading && (
+                <div className="text-center py-6 text-neutral-400 text-xs">
+                  Analyzing your event details...
+                </div>
+              )}
+
+              {aiError && !aiLoading && (
+                <div className="bg-red-950/40 border border-red-800/50 rounded-xl p-4 text-xs text-red-400">
+                  {aiError}
+                </div>
+              )}
+
+              {!aiLoading && !aiError && aiReasoning && (
+                <div className="bg-[#090b10] border border-[#1c2233] rounded-xl p-4 space-y-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block">
+                    AI Recommendation
+                  </span>
+                  <p className="text-xs text-neutral-300 leading-relaxed font-normal">
+                    {aiReasoning}
+                  </p>
+                </div>
+              )}
+
+              {!aiLoading && !aiError && aiSuggestions.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block">
+                    Recommended Equipment
+                  </span>
+
+                  <div className="space-y-2">
+                    {aiSuggestions.map((itemName) => {
+                      const isAdded = selectedEquipment.includes(itemName);
+                      return (
+                        <div
+                          key={itemName}
+                          className="p-3.5 bg-[#090b10] border border-[#1c2233] rounded-xl flex items-center justify-between gap-4"
+                        >
+                          <h4 className="text-xs font-black uppercase text-white">{itemName}</h4>
+                          <button
+                            type="button"
+                            onClick={() => toggleEquipment(itemName)}
+                            className={`px-4 py-2 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer shrink-0 ${
+                              isAdded
+                                ? "bg-emerald-600 text-white"
+                                : "bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/30"
+                            }`}
+                          >
+                            {isAdded ? "Added ✓" : "Add"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!aiLoading && !aiError && aiSuggestions.length === 0 && aiReasoning === "" && (
+                <p className="text-xs text-neutral-500 text-center py-4">
+                  No suggestions available — try filling in more event details first.
                 </p>
-              </div>
-
-              {/* Recommended Package Card with Interactive 1-Click Add */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block">
-                  Recommended Packages
-                </span>
-
-                <div className="p-3.5 bg-[#090b10] border border-[#1c2233] rounded-xl flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=300&auto=format&fit=crop"
-                      alt={aiRec.pkg}
-                      className="w-16 h-12 object-cover rounded-lg shrink-0"
-                    />
-                    <div>
-                      <h4 className="text-xs font-black uppercase text-white">{aiRec.pkg}</h4>
-                      <p className="text-[10px] text-neutral-400">
-                        Cameras, TriCaster system, monitors, communication sets.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleEquipment(aiRec.pkg)}
-                    className={`px-4 py-2 rounded-lg text-[11px] font-extrabold uppercase tracking-wider transition cursor-pointer shrink-0 ${
-                      selectedEquipment.includes(aiRec.pkg)
-                        ? "bg-emerald-600 text-white"
-                        : "bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/30"
-                    }`}
-                  >
-                    {selectedEquipment.includes(aiRec.pkg) ? "Added ✓" : "Add"}
-                  </button>
-                </div>
-              </div>
+              )}
 
               <p className="text-[10px] text-neutral-500 italic">
-                💡 Suggestions are based on your event details. You can always customize further.
+                💡 Suggestions are based on your event details{aiBasedOnHistory ? " and similar past bookings" : ""}. You can always customize further.
               </p>
             </div>
 

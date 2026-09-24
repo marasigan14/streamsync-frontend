@@ -9,6 +9,7 @@ import {
   GripHorizontal,
   EyeOff,
 } from "lucide-react";
+import { supabase } from "../../supabaseClient";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -91,12 +92,24 @@ const ChatbotModal = ({ isOpen, onClose, onDismissCompletely }) => {
     return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Calls the real StreamSync backend chatbot endpoint
+  // Calls the real StreamSync backend chatbot endpoint.
+  // Attaches the Supabase session token (if logged in) so the backend can
+  // personalize replies with the client's real booking data (FR-09).
+  // Anonymous visitors are unaffected — no session just means no header.
   const generateBotResponse = async (userText) => {
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers = { "Content-Type": "application/json" };
+      if (session) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const response = await fetch(`${API_URL}/chatbot`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           message: userText,
           session_id: sessionId,

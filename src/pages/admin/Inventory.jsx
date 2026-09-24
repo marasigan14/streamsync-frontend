@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { supabase } from "../../supabaseClient";
 const API_URL = import.meta.env.VITE_API_URL;
 import {
   Search,
@@ -24,6 +25,10 @@ const Inventory = () => {
   const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
   const [showAddLogModal, setShowAddLogModal] = useState(false);
 
+  // FR-10 QR Code Modal State
+  const [qrModalItem, setQrModalItem] = useState(null);
+  const [qrCodeImage, setQrCodeImage] = useState(null);
+
   // New Equipment Form State
   const [newEqName, setNewEqName] = useState("");
   const [newEqCategory, setNewEqCategory] = useState("LIVESTREAM");
@@ -39,8 +44,7 @@ const Inventory = () => {
   // Calendar Month State (June 2026 default)
   const [calendarDate, setCalendarDate] = useState(new Date(2026, 5, 1));
 
-  // Master Inventory Dataset matching image_e83ee7.jpg
-   // Master Inventory Dataset — fetched live from StreamSync API
+  // Master Inventory Dataset — fetched live from StreamSync API
   const [inventoryList, setInventoryList] = useState([]);
 
   useEffect(() => {
@@ -210,6 +214,30 @@ const Inventory = () => {
     setNewLogStaff("");
     setNewLogCondition("good");
     setNewLogComment("");
+  };
+
+  // FR-10: fetch and display a QR code for the given equipment item
+  const handleViewQr = async (item) => {
+    setQrModalItem(item);
+    setQrCodeImage(null); // reset while loading
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("No active session");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/equipment/${item.id}/qrcode`, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await response.json();
+      setQrCodeImage(data.qrcode_base64);
+    } catch (error) {
+      console.error("Failed to fetch QR code:", error);
+    }
   };
 
   // Dynamic Calendar Grid Math (with other months visible)
@@ -463,9 +491,10 @@ const Inventory = () => {
                       <td className="py-4 pr-6 text-right">
                         <button
                           type="button"
+                          onClick={() => handleViewQr(item)}
                           className="text-[11px] font-bold text-neutral-400 hover:text-white transition cursor-pointer"
                         >
-                          View
+                          View QR
                         </button>
                       </td>
                     </tr>
@@ -902,6 +931,38 @@ const Inventory = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL: VIEW QR CODE (FR-10)                                    */}
+      {/* ============================================================== */}
+      {qrModalItem && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white text-center">
+            <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                {qrModalItem.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setQrModalItem(null)}
+                className="text-neutral-500 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {qrCodeImage ? (
+              <img src={qrCodeImage} alt={`QR code for ${qrModalItem.name}`} className="mx-auto w-48 h-48" />
+            ) : (
+              <p className="text-xs text-neutral-500 py-12">Loading QR code...</p>
+            )}
+
+            <p className="text-[10px] text-neutral-500">
+              Attach this to the physical item for scan-based checkout.
+            </p>
+          </div>
         </div>
       )}
     </div>

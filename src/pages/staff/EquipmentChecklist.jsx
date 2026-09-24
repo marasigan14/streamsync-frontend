@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { supabase } from "../../supabaseClient";
 import {
   Search,
   Plus,
@@ -10,10 +11,16 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Package,
+  ScanLine,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const EquipmentChecklist = () => {
-  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar"
+  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar" | "scan_equipment"
   const [showAddLog, setShowAddLog] = useState(false);
 
   // Filters
@@ -27,7 +34,14 @@ const EquipmentChecklist = () => {
   const [newCondition, setNewCondition] = useState("good");
   const [newComment, setNewComment] = useState("");
 
-  // Master Inventory Items (from image_e7b084.jpg)
+  // FR-10 Scan Equipment State
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState(null); // { equipment_name, action, new_available_quantity } or { error }
+  const [scannedEquipmentId, setScannedEquipmentId] = useState(null);
+  const scannerRef = useRef(null);
+  const html5QrCodeRef = useRef(null);
+
+  // Master Inventory Items (mock data — not yet wired to live API on this page)
   const [inventoryList] = useState([
     { id: 1, name: "Sony FX3 Camera", category: "LIVESTREAM", availability: "4/5", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
     { id: 2, name: "Cameras", category: "LIVESTREAM", availability: "2/3", status: "MAINTENANCE", lastCheck: "2026-05-19", statusColor: "amber" },
@@ -66,7 +80,7 @@ const EquipmentChecklist = () => {
     { id: 35, name: "Moving Head Light", category: "LIGHTING", availability: "2/4", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
   ]);
 
-  // Condition Logs List (from image_e7b0a2.jpg)
+  // Condition Logs List
   const [logsList, setLogsList] = useState([
     {
       id: 1,
@@ -115,7 +129,7 @@ const EquipmentChecklist = () => {
     },
   ]);
 
-  // Upcoming Bookings for Calendar Tab (from image_e7b0bf.jpg)
+  // Upcoming Bookings for Calendar Tab
   const upcomingBookings = [
     { name: "Tech Corp Annual Conference", client: "Tech Corp Inc.", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-05" },
     { name: "SM Prom Night", client: "SM Group", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-06" },
@@ -159,6 +173,103 @@ const EquipmentChecklist = () => {
     setNewCondition("good");
     setNewComment("");
   };
+
+  // ================================================================
+  // FR-10: QR Scanner logic
+  // ================================================================
+
+  const startScanner = async () => {
+    setScanResult(null);
+    setScannedEquipmentId(null);
+    setIsScanning(true);
+
+    // Wait a tick for the DOM element to actually mount before attaching the camera
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        html5QrCodeRef.current = html5QrCode;
+
+        await html5QrCode.start(
+          { facingMode: "environment" }, // rear camera on phones
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          (decodedText) => {
+            // Successful scan — decodedText is the equipment_id we encoded earlier
+            setScannedEquipmentId(decodedText);
+            stopScanner();
+          },
+          () => {
+            // per-frame scan failure (no QR in view) — expected, ignore
+          }
+        );
+      } catch (err) {
+        console.error("Camera failed to start:", err);
+        setScanResult({ error: "Could not access camera. Check browser permissions." });
+        setIsScanning(false);
+      }
+    }, 100);
+  };
+
+  const stopScanner = async () => {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+        html5QrCodeRef.current.clear();
+      } catch (err) {
+        // scanner may already be stopped — safe to ignore
+      }
+    }
+    setIsScanning(false);
+  };
+
+  const submitScan = async (action) => {
+    if (!scannedEquipmentId) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setScanResult({ error: "You must be logged in to scan equipment." });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/equipment/scan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          equipment_id: parseInt(scannedEquipmentId, 10),
+          action,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setScanResult({ error: data.detail || "Scan failed." });
+        return;
+      }
+
+      setScanResult(data);
+    } catch (err) {
+      console.error("Scan submission failed:", err);
+      setScanResult({ error: "Network error — could not reach the server." });
+    }
+  };
+
+  const resetScan = () => {
+    setScanResult(null);
+    setScannedEquipmentId(null);
+  };
+
+  // Clean up camera if the user navigates away mid-scan
+  useEffect(() => {
+    return () => {
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
 
   // Filter computations
   const filteredInventory = inventoryList.filter((item) => {
@@ -216,10 +327,25 @@ const EquipmentChecklist = () => {
           >
             Booking Calendar
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSubTab("scan_equipment");
+              resetScan();
+            }}
+            className={`pb-3.5 transition cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              subTab === "scan_equipment"
+                ? "text-red-600 border-b-2 border-red-600"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            <ScanLine size={14} />
+            Scan Equipment
+          </button>
         </div>
 
         {/* ============================================================== */}
-        {/* SUB-TAB 1: INVENTORY (Image e7b084.jpg)                         */}
+        {/* SUB-TAB 1: INVENTORY                                           */}
         {/* ============================================================== */}
         {subTab === "inventory" && (
           <div className="space-y-6">
@@ -349,7 +475,7 @@ const EquipmentChecklist = () => {
         )}
 
         {/* ============================================================== */}
-        {/* SUB-TAB 2: CONDITION LOGS (Image e7b0a2.jpg & e7b0dc.jpg)       */}
+        {/* SUB-TAB 2: CONDITION LOGS                                      */}
         {/* ============================================================== */}
         {subTab === "condition_logs" && (
           <div className="space-y-6">
@@ -396,7 +522,7 @@ const EquipmentChecklist = () => {
               <span className="text-[10px] text-neutral-500 font-mono">0 from staff</span>
             </div>
 
-            {/* COLLAPSIBLE NEW CONDITION LOG FORM (image_e7b0dc.jpg) */}
+            {/* COLLAPSIBLE NEW CONDITION LOG FORM */}
             {showAddLog && (
               <form
                 onSubmit={handleAddLogSubmit}
@@ -533,7 +659,7 @@ const EquipmentChecklist = () => {
         )}
 
         {/* ============================================================== */}
-        {/* SUB-TAB 3: BOOKING CALENDAR (Image e7b0bf.jpg)                  */}
+        {/* SUB-TAB 3: BOOKING CALENDAR                                    */}
         {/* ============================================================== */}
         {subTab === "booking_calendar" && (
           <div className="space-y-6">
@@ -667,6 +793,132 @@ const EquipmentChecklist = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* SUB-TAB 4: SCAN EQUIPMENT (FR-10)                              */}
+        {/* ============================================================== */}
+        {subTab === "scan_equipment" && (
+          <div className="space-y-6">
+            <div className="border border-[#1b212f] rounded-2xl bg-[#090b10] p-6 md:p-10 flex flex-col items-center text-center space-y-6">
+              {/* Idle state — nothing scanned yet, camera not active */}
+              {!isScanning && !scannedEquipmentId && !scanResult && (
+                <>
+                  <ScanLine size={48} className="text-red-600" />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white mb-1">
+                      Scan Equipment QR Code
+                    </h3>
+                    <p className="text-xs text-neutral-500">
+                      Point your camera at the QR code attached to the equipment to check it in or out.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={startScanner}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider py-3 px-8 rounded-xl transition cursor-pointer shadow-lg shadow-red-950/40"
+                  >
+                    Start Scanning
+                  </button>
+                </>
+              )}
+
+              {/* Active camera view */}
+              {isScanning && (
+                <>
+                  <div id="qr-reader" ref={scannerRef} className="w-full max-w-sm rounded-xl overflow-hidden border border-[#1b212f]" />
+                  <p className="text-xs text-neutral-500">Point the camera at a QR code...</p>
+                  <button
+                    type="button"
+                    onClick={stopScanner}
+                    className="border border-[#1b212f] text-neutral-400 hover:text-white text-xs font-bold uppercase tracking-wider py-2.5 px-6 rounded-xl transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+
+              {/* Scanned, awaiting checkout/checkin choice */}
+              {scannedEquipmentId && !scanResult && (
+                <>
+                  <CheckCircle2 size={40} className="text-emerald-500" />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white mb-1">
+                      QR Code Scanned
+                    </h3>
+                    <p className="text-xs text-neutral-500">Equipment ID: {scannedEquipmentId}</p>
+                    <p className="text-xs text-neutral-500 mt-1">What would you like to do?</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => submitScan("checkout")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider py-3 px-6 rounded-xl transition cursor-pointer shadow-lg"
+                    >
+                      Check Out
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => submitScan("checkin")}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider py-3 px-6 rounded-xl transition cursor-pointer shadow-lg"
+                    >
+                      Check In
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetScan}
+                    className="text-[11px] text-neutral-500 hover:text-white transition cursor-pointer"
+                  >
+                    Scan a different item
+                  </button>
+                </>
+              )}
+
+              {/* Result — success */}
+              {scanResult && !scanResult.error && (
+                <>
+                  <CheckCircle2 size={40} className="text-emerald-500" />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white mb-1">
+                      {scanResult.action === "checkout" ? "Checked Out" : "Checked In"}
+                    </h3>
+                    <p className="text-xs text-neutral-300">{scanResult.equipment_name}</p>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      Available now: {scanResult.new_available_quantity}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetScan}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider py-3 px-8 rounded-xl transition cursor-pointer shadow-lg shadow-red-950/40"
+                  >
+                    Scan Another
+                  </button>
+                </>
+              )}
+
+              {/* Result — error */}
+              {scanResult && scanResult.error && (
+                <>
+                  <XCircle size={40} className="text-red-500" />
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-wider text-white mb-1">
+                      Scan Failed
+                    </h3>
+                    <p className="text-xs text-neutral-500">{scanResult.error}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetScan}
+                    className="border border-[#1b212f] text-neutral-400 hover:text-white text-xs font-bold uppercase tracking-wider py-2.5 px-6 rounded-xl transition cursor-pointer"
+                  >
+                    Try Again
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

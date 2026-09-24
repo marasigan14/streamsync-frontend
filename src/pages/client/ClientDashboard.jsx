@@ -47,6 +47,8 @@ const ClientDashboard = () => {
   const [selectedBookingForEdit, setSelectedBookingForEdit] = useState(null);
   const [modalEquipments, setModalEquipments] = useState([]);
   const [updatingEquipment, setUpdatingEquipment] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(true);
+  const bookingsRequestIdRef = React.useRef(0);
 
   // Available equipment list inside the edit modal
   const editableInventory = [
@@ -59,73 +61,86 @@ const ClientDashboard = () => {
     { id: "snd-mic", name: "Wireless Handheld Mics (Set of 4)", category: "Audio", price: 2000 },
   ];
 
-  // Default fallback bookings matching the My Bookings screenshot
-  const [bookingsList, setBookingsList] = useState([
-    {
-      id: "b-001",
-      event_name: "Annual Company Conference",
-      event_type: "Conference",
-      status: "confirmed",
-      start_date: "2026-06-15",
-      time: "09:00 AM - 6:00 PM",
-      venue: "SMX Convention Center",
-      budget: "₱100,000+",
-      services: ["LIVE EVENT STREAMING", "VIDEO PRODUCTION", "AUDIO ENGINEERING"],
-      submitted_date: "2026-05-10",
-      equipment: ["4K Cinema Camera", "Professional HD Camera"],
-      total_price: 80000,
-    },
-    {
-      id: "b-002",
-      event_name: "Product Launch Webinar",
-      event_type: "Webinar",
-      status: "pencil_booked",
-      start_date: "2026-07-20",
-      time: "2:00 PM - 4:00 PM",
-      venue: "Virtual",
-      budget: "₱25,000 - ₱50,000",
-      services: ["WEBINAR PRODUCTION", "VIRTUAL EVENTS"],
-      submitted_date: "2026-05-14",
-      equipment: ["Basic HD Camera"],
-      total_price: 35000,
-    },
-    {
-      id: "b-003",
-      event_name: "Team Building Event",
-      event_type: "Corporate",
-      status: "completed",
-      start_date: "2026-05-28",
-      time: "10:00 AM - 5:00 PM",
-      venue: "Tagaytay",
-      budget: "₱50,000 - ₱100,000",
-      services: ["LIVE EVENT STREAMING", "VIDEO PRODUCTION"],
-      submitted_date: "2026-04-20",
-      equipment: ["Professional HD Camera"],
-      total_price: 65000,
-    },
-    {
-      id: "b-004",
-      event_name: "Marketing Workshop",
-      event_type: "Seminar",
-      status: "draft",
-      start_date: "2026-08-10",
-      time: "9:00 AM - 12:00 PM",
-      venue: "BGC Office",
-      budget: "₱10,000 - ₱25,000",
-      services: ["AUDIO ENGINEERING"],
-      submitted_date: "2026-05-20",
-      equipment: ["Basic HD Camera"],
-      total_price: 18000,
-    },
-  ]);
+  // Real bookings, loaded from the FastAPI backend (no more hardcoded samples)
+  const [bookingsList, setBookingsList] = useState([]);
 
-  // Fetch logged-in user details from Supabase Auth and database
-  useEffect(() => {
-    const fetchUserData = async () => {
+  // Map real booking_status enum + tentative flag in notes -> UI status keys
+  const mapStatus = (dbStatus, notes) => {
+    if (dbStatus === "approved") return "confirmed";
+    if (dbStatus === "declined" || dbStatus === "cancelled") return "cancelled";
+    if (dbStatus === "completed") return "completed";
+    if (dbStatus === "pending" && (notes || "").includes("[TENTATIVE / PENCIL BOOKING]")) {
+      return "pencil_booked";
+    }
+    return "pending";
+  };
+
+  // Fetch bookings for the logged-in client via the FastAPI backend.
+  // requestIdRef guards against stale/overlapping calls: if two fetches are
+  // in flight (e.g. from duplicate auth events on page load), only the
+  // result of the LAST one started is allowed to update state — an older
+  // call finishing late can no longer stomp a newer, correct result.
+  const fetchClientBookings = async () => {
+    const thisRequestId = ++bookingsRequestIdRef.current;
+    setBookingsLoading(true);
+    try {
       const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        data: { session },
+      } = await supabase.auth.getSession();
 
+      if (!session) {
+        if (thisRequestId === bookingsRequestIdRef.current) setBookingsList([]);
+        return;
+      }
+
+      const response = await fetch("http://127.0.0.1:8000/bookings/mine", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to load bookings:", await response.text());
+        if (thisRequestId === bookingsRequestIdRef.current) setBookingsList([]);
+        return;
+      }
+
+      const data = await response.json();
+
+      const formatted = data.map((b) => ({
+        id: b.id,
+        event_name: b.event_name || "Untitled Event",
+        event_type: b.event_type || "Event",
+        status: mapStatus(b.status, b.notes),
+        start_date: b.event_date || "To be scheduled",
+        time: b.start_time && b.end_time ? `${b.start_time} - ${b.end_time}` : "All Day",
+        venue: b.venue || "Venue TBD",
+        budget: "Quote pending",
+        services: [],
+        submitted_date: b.created_at ? b.created_at.split("T")[0] : "Recent",
+        equipment: Array.isArray(b.booking_equipment)
+          ? b.booking_equipment.map((be) => be.equipment?.name).filter(Boolean)
+          : [],
+        total_price: b.total_amount || 0,
+      }));
+
+      if (thisRequestId === bookingsRequestIdRef.current) setBookingsList(formatted);
+    } catch (err) {
+      console.error(err);
+      if (thisRequestId === bookingsRequestIdRef.current) setBookingsList([]);
+    } finally {
+      if (thisRequestId === bookingsRequestIdRef.current) setBookingsLoading(false);
+    }
+  };
+
+  // Fetch logged-in user details from Supabase Auth and database.
+  // Uses onAuthStateChange instead of a one-shot getSession()/getUser() call,
+  // because right after a page load the Supabase client may not have finished
+  // restoring the session from storage yet — a one-shot check can randomly
+  // see "no session" even though the user is actually logged in. The
+  // INITIAL_SESSION / SIGNED_IN events fire once hydration is actually done.
+  useEffect(() => {
+    const loadForUser = async (user) => {
       if (user) {
         const metadata = user.user_metadata || {};
         let fullName =
@@ -172,39 +187,21 @@ const ClientDashboard = () => {
           email: user.email || "",
           initials,
         });
-
-        // Try fetching user's actual bookings from database
-        try {
-          const { data: dbBookings } = await supabase
-            .from("bookings")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
-
-          if (dbBookings && dbBookings.length > 0) {
-            const formatted = dbBookings.map((b) => ({
-              id: b.id,
-              event_name: b.event_name || "Untitled Event",
-              event_type: b.event_type || "Event",
-              status: (b.status || "pending").toLowerCase(),
-              start_date: b.start_date || "2026-06-15",
-              time: b.time || "09:00 AM - 05:00 PM",
-              venue: b.venue || "SMX Convention Center",
-              budget: b.budget || "₱25,000 - ₱50,000",
-              services: Array.isArray(b.services) && b.services.length > 0 ? b.services : ["LIVE EVENT STREAMING"],
-              submitted_date: b.created_at ? b.created_at.split("T")[0] : "2026-05-10",
-              equipment: Array.isArray(b.equipment) ? b.equipment : ["Professional HD Camera"],
-              total_price: b.total_price || 80000,
-            }));
-            setBookingsList(formatted);
-          }
-        } catch (e) {
-          // Keep default fallback bookings if query fails
-        }
       }
+
+      // Load real bookings from the backend regardless of name-resolution path above
+      fetchClientBookings();
     };
 
-    fetchUserData();
+    // Fires once Supabase has actually finished restoring the session
+    // (INITIAL_SESSION) and again on any later sign-in/out.
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      loadForUser(session?.user ?? null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -226,6 +223,9 @@ const ClientDashboard = () => {
   };
 
   // Save changes from Edit Equipment Modal
+  // NOTE: still targets a legacy `equipment` column that no longer exists on
+  // the real `bookings` table (equipment now lives in `booking_equipment`).
+  // Not wired to the FastAPI backend yet — edits here will not persist.
   const handleSaveEquipmentChanges = async () => {
     if (!selectedBookingForEdit) return;
     setUpdatingEquipment(true);
@@ -236,13 +236,11 @@ const ClientDashboard = () => {
         return acc + (item ? item.price : 8000);
       }, 40000);
 
-      // Attempt updating Supabase
       await supabase
         .from("bookings")
         .update({ equipment: modalEquipments })
         .eq("id", selectedBookingForEdit.id);
 
-      // Update state
       setBookingsList((prev) =>
         prev.map((b) =>
           b.id === selectedBookingForEdit.id
@@ -378,7 +376,9 @@ const ClientDashboard = () => {
                     <Calendar size={24} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black leading-none text-white">2</h2>
+                    <h2 className="text-3xl font-black leading-none text-white">
+                      {bookingsList.filter((b) => b.status === "confirmed" || b.status === "pending" || b.status === "pencil_booked").length}
+                    </h2>
                     <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5">
                       Active Bookings
                     </p>
@@ -390,7 +390,9 @@ const ClientDashboard = () => {
                     <CheckCircle2 size={24} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black leading-none text-white">5</h2>
+                    <h2 className="text-3xl font-black leading-none text-white">
+                      {bookingsList.filter((b) => b.status === "completed").length}
+                    </h2>
                     <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5">
                       Past Events
                     </p>
@@ -402,7 +404,7 @@ const ClientDashboard = () => {
                     <Clock size={24} />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-black leading-none text-white">1</h2>
+                    <h2 className="text-3xl font-black leading-none text-white">{pendingOrPencilCount}</h2>
                     <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mt-1.5">
                       Pending Quotes
                     </p>
@@ -426,45 +428,30 @@ const ClientDashboard = () => {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="bg-[#0b0e14] border border-[#1a202e] rounded-xl p-4 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-white">
-                          Corporate Webinar 2026
-                        </h4>
-                        <span className="bg-[#0e241c] text-[#22c55e] border border-[#144231] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                          Confirmed
-                        </span>
+                    {bookingsList.length === 0 && (
+                      <p className="text-xs text-neutral-500">No bookings yet.</p>
+                    )}
+                    {bookingsList.slice(0, 2).map((booking) => (
+                      <div key={booking.id} className="bg-[#0b0e14] border border-[#1a202e] rounded-xl p-4 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-white">
+                            {booking.event_name}
+                          </h4>
+                          <span className="bg-[#0e241c] text-[#22c55e] border border-[#144231] text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize">
+                            {booking.status.replace("_", " ")}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-neutral-500 -mt-1 font-mono">BK-{booking.id}</p>
+                        <div className="flex items-center gap-5 text-xs text-neutral-400 pt-1">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar size={13} className="text-neutral-500" /> {booking.start_date}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Video size={13} className="text-neutral-500" /> {booking.event_type}
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-neutral-500 -mt-1 font-mono">BK-2026-001</p>
-                      <div className="flex items-center gap-5 text-xs text-neutral-400 pt-1">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar size={13} className="text-neutral-500" /> Aug 15, 2026
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Video size={13} className="text-neutral-500" /> Webinar
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#0b0e14] border border-[#1a202e] rounded-xl p-4 flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-white">
-                          Annual Product Launch
-                        </h4>
-                        <span className="bg-[#2a1d13] text-[#f59e0b] border border-[#482d18] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                          Pending
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-neutral-500 -mt-1 font-mono">BK-2026-002</p>
-                      <div className="flex items-center gap-5 text-xs text-neutral-400 pt-1">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar size={13} className="text-neutral-500" /> Oct 05, 2026
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <Video size={13} className="text-neutral-500" /> Live Stream
-                        </span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
@@ -586,6 +573,16 @@ const ClientDashboard = () => {
 
               {/* Bookings List Cards */}
               <div className="space-y-4">
+                {bookingsLoading && (
+                  <p className="text-neutral-500 text-sm">Loading your bookings...</p>
+                )}
+
+                {!bookingsLoading && bookingsList.length === 0 && (
+                  <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-8 text-center text-neutral-400 text-sm">
+                    You don't have any bookings yet.
+                  </div>
+                )}
+
                 {bookingsList.map((booking) => (
                   <div
                     key={booking.id}
@@ -615,6 +612,11 @@ const ClientDashboard = () => {
                             Confirmed
                           </span>
                         )}
+                        {(booking.status === "pending") && (
+                          <span className="bg-orange-950/40 text-orange-400 border border-orange-800/50 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                            Pending
+                          </span>
+                        )}
                         {booking.status === "pencil_booked" && (
                           <span className="bg-amber-950/40 text-amber-500 border border-amber-800/50 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
                             Pencil Book
@@ -623,6 +625,11 @@ const ClientDashboard = () => {
                         {booking.status === "completed" && (
                           <span className="bg-blue-950/40 text-blue-500 border border-blue-800/50 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
                             Completed
+                          </span>
+                        )}
+                        {booking.status === "cancelled" && (
+                          <span className="bg-neutral-800 text-neutral-400 border border-neutral-700 px-3.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                            Cancelled
                           </span>
                         )}
                         {booking.status === "draft" && (
@@ -665,15 +672,18 @@ const ClientDashboard = () => {
 
                     <div className="mb-6">
                       <p className="text-[10px] text-neutral-500 uppercase tracking-widest mb-2 font-bold">
-                        Services:
+                        Equipment:
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {booking.services.map((srv, idx) => (
+                        {booking.equipment.length === 0 && (
+                          <span className="text-[10px] text-neutral-600 italic">No equipment on file</span>
+                        )}
+                        {booking.equipment.map((eq, idx) => (
                           <span
                             key={idx}
                             className="text-[10px] font-bold border border-[#20293d] bg-[#090b10] rounded-md px-3 py-1 text-neutral-300 uppercase tracking-wider"
                           >
-                            {srv}
+                            {eq}
                           </span>
                         ))}
                       </div>
@@ -817,7 +827,7 @@ const ClientDashboard = () => {
                     Downpayment Paid
                   </span>
                   <p className="text-lg font-black text-white">
-                    ₱{selectedBookingForEdit.total_price.toLocaleString()}
+                    ₱{(selectedBookingForEdit.total_price || 0).toLocaleString()}
                   </p>
                   <span className="text-[9px] text-neutral-500 block uppercase">
                     Current Total
