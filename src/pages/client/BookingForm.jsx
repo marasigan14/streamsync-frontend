@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Home,
@@ -31,6 +31,8 @@ import { supabase } from "../../supabaseClient";
 import logoImage from "../../assets/livestream-logo.png";
 import MyBookings from "./MyBookings";
 
+const API_URL = "http://127.0.0.1:8000";
+
 const BookingForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -50,6 +52,8 @@ const BookingForm = () => {
   const [clientType, setClientType] = useState("Corporate");
   const [startDate, setStartDate] = useState(searchParams.get("start") || "");
   const [endDate, setEndDate] = useState(searchParams.get("end") || "");
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("17:00");
   const [venue, setVenue] = useState("");
   const [estimatedGuests, setEstimatedGuests] = useState("100");
   const [specialNotes, setSpecialNotes] = useState("");
@@ -71,11 +75,34 @@ const BookingForm = () => {
   const [referenceNumber, setReferenceNumber] = useState("");
   const [paymentReceipt, setPaymentReceipt] = useState(null);
   const [policyAgreed, setPolicyAgreed] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
+  const [proofSubmitted, setProofSubmitted] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState(null);
+  const [showReceiptLightbox, setShowReceiptLightbox] = useState(false);
+
+  // One preview URL per selected file; released when the file changes or the page closes.
+  useEffect(() => {
+    if (!paymentReceipt) {
+      setReceiptPreviewUrl(null);
+      setShowReceiptLightbox(false);
+      return;
+    }
+    const url = URL.createObjectURL(paymentReceipt);
+    setReceiptPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [paymentReceipt]);
+  const [proofResult, setProofResult] = useState(null); // null | { ok, reference?, message? }
+  const paymentSectionRef = useRef(null);
 
   // Submission State
   const [submitting, setSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // FR: Live availability / double-booking check
+  const [availabilityChecking, setAvailabilityChecking] = useState(false);
+  const [availabilityConflicts, setAvailabilityConflicts] = useState([]);
+  const [availabilityChecked, setAvailabilityChecked] = useState(false);
 
   // Payment Details Data
   const paymentDetails = {
@@ -162,35 +189,35 @@ const BookingForm = () => {
   // Service Catalog
   const [availableServices, setAvailableServices] = useState([]);
 
-useEffect(() => {
-  const loadServices = async () => {
-    // Kunin lang ang mga services na NAKA-ON (is_active === true)
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .eq("is_active", true);
+  useEffect(() => {
+    const loadServices = async () => {
+      // Only load services that are switched ON (is_active === true)
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .eq("is_active", true);
 
-    if (!error && data) {
-      setAvailableServices(data);
-    }
-  };
+      if (!error && data) {
+        setAvailableServices(data);
+      }
+    };
 
-  loadServices();
+    loadServices();
 
-  // Realtime subscription: kapag in-off sa admin, kusa ding magtatago sa client
-  const channel = supabase
-    .channel("services-sync")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "services" },
-      () => loadServices()
-    )
-    .subscribe();
+    // Realtime subscription: when admin turns a service off, it hides for clients too
+    const channel = supabase
+      .channel("services-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "services" },
+        () => loadServices()
+      )
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Pre-configured Packages
   const availablePackages = [
@@ -245,6 +272,53 @@ useEffect(() => {
     );
   };
 
+  // ================================================================
+  // Live double-booking / availability check
+  // Re-runs (debounced) whenever date, time, or equipment selection
+  // changes, calling the real backend conflict-detection endpoint.
+  // ================================================================
+  useEffect(() => {
+    if (!startDate || selectedEquipment.length === 0) {
+      setAvailabilityConflicts([]);
+      setAvailabilityChecked(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setAvailabilityChecking(true);
+      try {
+        const params = new URLSearchParams();
+        params.append("event_date", startDate);
+        params.append("start_time", startTime);
+        params.append("end_time", endTime);
+        selectedEquipment.forEach((eq) => params.append("equipment", eq));
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const response = await fetch(
+          `${API_URL}/bookings/check-availability?${params.toString()}`,
+          {
+            headers: session ? { Authorization: `Bearer ${session.access_token}` } : {},
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setAvailabilityConflicts(data.conflicts || []);
+        }
+        setAvailabilityChecked(true);
+      } catch (err) {
+        console.error("Availability check failed:", err);
+      } finally {
+        setAvailabilityChecking(false);
+      }
+    }, 600); // debounce so it doesn't fire on every keystroke/click
+
+    return () => clearTimeout(timer);
+  }, [startDate, startTime, endTime, selectedEquipment]);
+
   // AI Recommendation Engine (FR-03) — calls the real backend, grounded in
   // the actual equipment catalog and historical booking data.
   const [aiSuggestions, setAiSuggestions] = useState([]);
@@ -257,7 +331,7 @@ useEffect(() => {
     setAiLoading(true);
     setAiError("");
     try {
-      const response = await fetch("http://127.0.0.1:8000/equipment-ai/suggest", {
+      const response = await fetch(`${API_URL}/equipment-ai/suggest`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -305,6 +379,18 @@ useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
+      if (startTime >= endTime) {
+        setErrorMessage("End Time must be after Start Time.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      if (availabilityConflicts.length > 0) {
+        setErrorMessage(
+          "There's a scheduling conflict with your selected date/time/equipment. Please adjust before submitting."
+        );
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       if (!policyAgreed) {
         setErrorMessage("Please review and agree to the Cancellation Policy.");
         return;
@@ -332,6 +418,8 @@ useEffect(() => {
         event_type: eventType,
         start_date: startDate,
         end_date: endDate || startDate,
+        start_time: startTime,
+        end_time: endTime,
         venue: venue,
         estimated_guests: estimatedGuests ? parseInt(estimatedGuests) : null,
         special_notes: specialNotes,
@@ -348,7 +436,7 @@ useEffect(() => {
         throw new Error("You must be logged in to submit a booking.");
       }
 
-      const response = await fetch("http://127.0.0.1:8000/bookings/", {
+      const response = await fetch(`${API_URL}/bookings/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -362,15 +450,58 @@ useEffect(() => {
         throw new Error(err.detail || "Failed to submit booking.");
       }
 
-      if (statusType === "submitted") {
-        setActionSuccess("Your booking request has been submitted! Our team will review it.");
-      } else if (statusType === "pencil_booked") {
-        setActionSuccess("Tentative dates saved! Your pencil booking has been recorded.");
+      const created = await response.json();
+
+      // Attach payment proof (if the client provided one) to the new booking.
+      // The booking is already saved at this point, so a proof failure never loses it.
+      let proofFailed = false;
+      let proofErrorText = "";
+      if (paymentReceipt || referenceNumber.trim()) {
+        try {
+          const form = new FormData();
+          form.append("method", paymentMethod);
+          form.append("payment_type", "downpayment");
+          if (referenceNumber.trim()) form.append("reference_no", referenceNumber.trim());
+          if (paymentReceipt) form.append("file", paymentReceipt);
+
+          const proofRes = await fetch(`${API_URL}/payments/${created.id}/proof`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            body: form,
+          });
+
+          if (!proofRes.ok) {
+            const err = await proofRes.json().catch(() => ({}));
+            throw new Error(err.detail || "Proof upload failed.");
+          }
+
+          setProofSubmitted(true);
+        } catch (proofErr) {
+          proofFailed = true;
+          proofErrorText = proofErr.message || "Unknown error";
+          console.error("Payment proof upload failed:", proofErr);
+        }
       }
+
+      const baseMessage =
+        statusType === "submitted"
+          ? "Your booking request has been submitted! Our team will review it."
+          : "Tentative dates saved! Your pencil booking has been recorded.";
+
+      setActionSuccess(
+        proofFailed
+          ? `${baseMessage} However, your payment proof could not be uploaded (${proofErrorText}). Please upload it again from Billing & Payments.`
+          : paymentReceipt || referenceNumber.trim()
+          ? `${baseMessage} Your payment proof was submitted and is awaiting verification.`
+          : baseMessage
+      );
+
+      // The success banner sits at the top of the page, so bring it into view.
+      window.scrollTo({ top: 0, behavior: "smooth" });
 
       setTimeout(() => {
         navigate("/client/dashboard");
-      }, 2000);
+      }, proofFailed ? 7000 : 4000);
     } catch (err) {
       setErrorMessage(err.message || "An error occurred while saving your booking.");
     } finally {
@@ -493,6 +624,39 @@ useEffect(() => {
             </div>
           )}
 
+          {/* Live Double-Booking Warning Banner */}
+          {availabilityChecked && availabilityConflicts.length > 0 && (
+            <div className="p-4 rounded-xl bg-orange-950/60 border border-orange-600/60 text-orange-400 flex items-start gap-3 text-sm">
+              <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">
+                  Scheduling conflict on {startDate} ({startTime}–{endTime})
+                </p>
+                <ul className="mt-1.5 space-y-1 text-xs text-orange-300">
+                  {availabilityConflicts.map((c, idx) => (
+                    <li key={idx}>
+                      <strong>{c.equipment}</strong> is not available for this time
+                      {" — "}
+                      {c.available_left === 0
+                        ? "fully booked"
+                        : `only ${c.available_left} left`}
+                      .
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[11px] text-orange-400/80 mt-1.5">
+                  Try a different date, time, or equipment selection.
+                </p>
+              </div>
+            </div>
+          )}
+          {availabilityChecking && (
+            <p className="text-[11px] text-neutral-500 flex items-center gap-1.5">
+              <Clock size={12} className="animate-pulse" />
+              Checking availability...
+            </p>
+          )}
+
           {/* Automated Quotation Header with AI Trigger */}
           <div className="relative overflow-hidden rounded-2xl p-6 bg-gradient-to-r from-[#171c2e] via-[#15142a] to-[#251322] border border-[#2c334d]">
             <div className="flex items-start justify-between gap-4">
@@ -604,6 +768,33 @@ useEffect(() => {
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
+                  />
+                </div>
+              </div>
+
+              {/* Start/End Time — for real time-aware conflict detection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    Start Time *
+                  </label>
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                    End Time *
+                  </label>
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
                   />
                 </div>
@@ -827,7 +1018,7 @@ useEffect(() => {
             />
           </section>
 
-          {/* 5. DOWNPAYMENT METHODS (EXACT REPLICA FROM SCREENSHOT) */}
+          {/* 5. DOWNPAYMENT METHODS */}
           <section className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-7 space-y-6">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-xl bg-red-600/20 border border-red-600/30 text-red-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -956,8 +1147,21 @@ useEffect(() => {
             {/* Proof of Payment Form */}
             <div className="pt-2 border-t border-[#1b212f] space-y-4">
               <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                After Paying — Submit Proof
+                After Paying — Attach Proof
               </span>
+
+              {proofSubmitted && (
+                <div className="p-4 rounded-xl bg-emerald-950/60 border border-emerald-600/60 text-emerald-400 flex items-start gap-3 text-sm">
+                  <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Payment proof submitted</p>
+                    <p className="text-xs text-emerald-300/80 mt-0.5">
+                      {referenceNumber.trim() ? `Reference ${referenceNumber.trim()} · ` : ""}
+                      Awaiting verification by our team. We'll email you once it's confirmed.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -986,19 +1190,77 @@ useEffect(() => {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => setPaymentReceipt(e.target.files[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files[0] || null;
+                        if (file && !["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                          setReceiptError("Please choose a JPG, PNG, or WEBP image.");
+                          setPaymentReceipt(null);
+                          e.target.value = "";
+                          return;
+                        }
+                        if (file && file.size > 5 * 1024 * 1024) {
+                          setReceiptError("Image is too large. Maximum size is 5 MB.");
+                          setPaymentReceipt(null);
+                          e.target.value = "";
+                          return;
+                        }
+                        setReceiptError("");
+                        setPaymentReceipt(file);
+                      }}
                     />
                   </label>
                 </div>
               </div>
 
-              <button
-                type="button"
-                disabled={!referenceNumber && !paymentReceipt}
-                className="w-full py-3 rounded-xl bg-[#1a2130] text-neutral-400 font-black text-xs uppercase tracking-widest cursor-pointer hover:bg-neutral-800 hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Submit Proof of Payment
-              </button>
+              {receiptError && (
+                <p className="text-[11px] text-red-400">{receiptError}</p>
+              )}
+
+              {paymentReceipt && receiptPreviewUrl && (
+                <div className="flex items-center gap-4 p-3 bg-[#0b0e14] border border-[#1b212f] rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setShowReceiptLightbox(true)}
+                    className="relative shrink-0 w-28 h-36 rounded-lg overflow-hidden border border-[#242e42] bg-black cursor-zoom-in group"
+                    title="Click to view full image"
+                  >
+                    <img
+                      src={receiptPreviewUrl}
+                      alt="Payment proof preview"
+                      className="w-full h-full object-contain"
+                    />
+                    <span className="absolute inset-x-0 bottom-0 bg-black/70 text-[10px] text-neutral-200 font-semibold py-1 text-center opacity-0 group-hover:opacity-100 transition">
+                      Click to enlarge
+                    </span>
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-semibold truncate">{paymentReceipt.name}</p>
+                    <p className="text-[10px] text-neutral-500">
+                      {(paymentReceipt.size / 1024).toFixed(0)} KB
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowReceiptLightbox(true)}
+                      className="mt-2 text-[11px] font-bold text-neutral-300 hover:text-white underline cursor-pointer"
+                    >
+                      View full image
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentReceipt(null)}
+                    className="text-[11px] font-bold text-red-500 hover:text-red-400 cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <p className="text-[10px] text-neutral-500 leading-relaxed">
+                Optional. If you've already paid, your proof is sent together with your booking
+                request and our team will verify it. You can also pay later: once our team approves
+                your booking you'll have 48 hours to pay the downpayment from Billing & Payments.
+              </p>
             </div>
           </section>
 
@@ -1074,9 +1336,9 @@ useEffect(() => {
                 </div>
                 <button
                   type="button"
-                  disabled={submitting}
+                  disabled={submitting || availabilityConflicts.length > 0}
                   onClick={() => handleBookingAction("submitted")}
-                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest transition cursor-pointer shadow-md shadow-red-600/30 disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold uppercase tracking-widest transition cursor-pointer shadow-md shadow-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? "Sending..." : "Submit Request"}
                 </button>
@@ -1095,9 +1357,9 @@ useEffect(() => {
                 </div>
                 <button
                   type="button"
-                  disabled={submitting}
+                  disabled={submitting || availabilityConflicts.length > 0}
                   onClick={() => handleBookingAction("pencil_booked")}
-                  className="w-full py-3 rounded-xl bg-[#1d1b15] hover:bg-amber-950/50 text-amber-400 border border-amber-800/60 text-xs font-extrabold uppercase tracking-widest transition cursor-pointer disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-[#1d1b15] hover:bg-amber-950/50 text-amber-400 border border-amber-800/60 text-xs font-extrabold uppercase tracking-widest transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? "Reserving..." : "Pencil Book"}
                 </button>
@@ -1259,6 +1521,28 @@ useEffect(() => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Full-size payment proof preview */}
+      {showReceiptLightbox && receiptPreviewUrl && (
+        <div
+          className="fixed inset-0 z-[110] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6"
+          onClick={() => setShowReceiptLightbox(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setShowReceiptLightbox(false)}
+            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-black/60 border border-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center cursor-pointer"
+          >
+            <X size={16} />
+          </button>
+          <img
+            src={receiptPreviewUrl}
+            alt="Payment proof full preview"
+            className="max-h-full max-w-full rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 

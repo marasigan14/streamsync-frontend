@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
-const API_URL = import.meta.env.VITE_API_URL;
 import {
   Search,
   Plus,
@@ -13,67 +12,141 @@ import {
   X,
 } from "lucide-react";
 
+/* ------------------------------------------------------------------
+   CONFIG & HELPERS
+------------------------------------------------------------------- */
+const API_URL = import.meta.env?.VITE_API_URL || "http://127.0.0.1:8000";
+
+// equipment.status enum -> badge label + color
+const EQUIPMENT_STATUS = {
+  available: { label: "AVAILABLE", color: "emerald" },
+  in_use: { label: "DEPLOYED", color: "blue" },
+  under_maintenance: { label: "MAINTENANCE", color: "amber" },
+  retired: { label: "RETIRED", color: "neutral" },
+};
+
+// Add-equipment form value -> equipment.status enum
+const FORM_STATUS_TO_ENUM = {
+  AVAILABLE: "available",
+  DEPLOYED: "in_use",
+  MAINTENANCE: "under_maintenance",
+};
+
+const STATUS_BADGE_STYLES = {
+  emerald: "bg-emerald-950/40 text-emerald-400 border-emerald-800/50",
+  blue: "bg-blue-950/40 text-blue-400 border-blue-800/50",
+  amber: "bg-amber-950/40 text-amber-400 border-amber-800/50",
+  neutral: "bg-neutral-900/60 text-neutral-400 border-neutral-700/50",
+};
+
+const CONDITION_BADGE_STYLES = {
+  GOOD: "bg-emerald-950/40 text-emerald-400 border-emerald-800/50",
+  FAIR: "bg-amber-950/40 text-amber-400 border-amber-800/50",
+  POOR: "bg-red-950/40 text-red-500 border-red-800/50",
+};
+
+// Equipment category -> calendar color + label
+const LIGHTS_AND_SOUNDS = { dot: "bg-purple-500", tag: "bg-purple-600", label: "Lights & Sounds" };
+const CATEGORY_THEME = {
+  LIVESTREAM: { dot: "bg-red-600", tag: "bg-red-600", label: "Livestream" },
+  PROJECTOR: { dot: "bg-blue-500", tag: "bg-blue-600", label: "Projector" },
+  AUDIO: LIGHTS_AND_SOUNDS,
+  LIGHTING: LIGHTS_AND_SOUNDS,
+};
+const DEFAULT_THEME = { dot: "bg-neutral-500", tag: "bg-neutral-600", label: "Other" };
+
+// Bookings that reserve equipment on the calendar
+const CALENDAR_STATUSES = ["pending", "approved"];
+
+const dateKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
+const formatLogDate = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return { date: "—", time: "" };
+  return {
+    date: dateKey(d),
+    time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+  };
+};
+
+const getAuthHeaders = async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not logged in");
+  return { Authorization: `Bearer ${session.access_token}` };
+};
+
+/* ------------------------------------------------------------------
+   COMPONENT
+------------------------------------------------------------------- */
 const Inventory = () => {
   const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar"
 
-  // Search & Filter States
+  // Search & filter
   const [inventorySearch, setInventorySearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [logSearch, setLogSearch] = useState("");
 
-  // Modal States
+  // Modals
   const [showAddEquipmentModal, setShowAddEquipmentModal] = useState(false);
   const [showAddLogModal, setShowAddLogModal] = useState(false);
-
-  // FR-10 QR Code Modal State
   const [qrModalItem, setQrModalItem] = useState(null);
   const [qrCodeImage, setQrCodeImage] = useState(null);
 
-  // New Equipment Form State
+  // New equipment form
   const [newEqName, setNewEqName] = useState("");
   const [newEqCategory, setNewEqCategory] = useState("LIVESTREAM");
   const [newEqQtyTotal, setNewEqQtyTotal] = useState("1");
   const [newEqStatus, setNewEqStatus] = useState("AVAILABLE");
 
-  // New Condition Log Form State
+  // New condition log form
   const [newLogItem, setNewLogItem] = useState("");
   const [newLogStaff, setNewLogStaff] = useState("");
   const [newLogCondition, setNewLogCondition] = useState("good");
   const [newLogComment, setNewLogComment] = useState("");
+  const [savingLog, setSavingLog] = useState(false);
+  const [logFormError, setLogFormError] = useState("");
 
-  // Calendar Month State (June 2026 default)
-  const [calendarDate, setCalendarDate] = useState(new Date(2026, 5, 1));
-
-  // Master Inventory Dataset — fetched live from StreamSync API
+  // Data
   const [inventoryList, setInventoryList] = useState([]);
+  const [logsList, setLogsList] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const [logsError, setLogsError] = useState(false);
+  const [calendarBookings, setCalendarBookings] = useState([]);
 
+  const [calendarDate, setCalendarDate] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+
+  /* ----------------------------- inventory ----------------------------- */
   useEffect(() => {
     const fetchInventory = async () => {
       try {
         const response = await fetch(`${API_URL}/equipment`);
         const data = await response.json();
 
-        const statusMap = {
-          available: { label: "AVAILABLE", color: "emerald" },
-          in_use: { label: "DEPLOYED", color: "blue" },
-          under_maintenance: { label: "MAINTENANCE", color: "amber" },
-          retired: { label: "RETIRED", color: "neutral" },
-        };
-
-        const transformed = data.map((item) => {
-          const statusInfo = statusMap[item.status] || statusMap.available;
-          return {
-            id: item.id,
-            name: item.name,
-            category: item.equipment_categories?.name?.toUpperCase() || "UNCATEGORIZED",
-            availability: `${item.available_quantity}/${item.total_quantity}`,
-            status: statusInfo.label,
-            statusColor: statusInfo.color,
-            lastCheck: item.updated_at?.split("T")[0] || "N/A",
-          };
-        });
-
-        setInventoryList(transformed);
+        setInventoryList(
+          data.map((item) => {
+            const statusInfo = EQUIPMENT_STATUS[item.status] || EQUIPMENT_STATUS.available;
+            return {
+              id: item.id,
+              name: item.name,
+              category: item.equipment_categories?.name?.toUpperCase() || "UNCATEGORIZED",
+              total: item.total_quantity ?? 0,
+              available: item.available_quantity ?? 0,
+              availability: `${item.available_quantity}/${item.total_quantity}`,
+              rawStatus: item.status,
+              status: statusInfo.label,
+              statusColor: statusInfo.color,
+              lastCheck: item.updated_at?.split("T")[0] || "N/A",
+            };
+          })
+        );
       } catch (error) {
         console.error("Failed to fetch inventory:", error);
       }
@@ -82,157 +155,62 @@ const Inventory = () => {
     fetchInventory();
   }, []);
 
-  // Condition Logs dataset matching image_e83eef.jpg
-  const [logsList, setLogsList] = useState([
-    {
-      id: 1,
-      item: "Cameras",
-      condition: "GOOD",
-      comment: "Sensor cleaned, white balance calibrated. All functions normal.",
-      staff: "Juan dela Cruz",
-      date: "2026-05-20",
-      time: "09:15",
-    },
-    {
-      id: 2,
-      item: "HDMI Cables",
-      condition: "FAIR",
-      comment: "Minor fraying on 3 cables. Recommend replacement before",
-      staff: "Maria Santos",
-      date: "2026-05-19",
-      time: "14:30",
-    },
-    {
-      id: 3,
-      item: "Tigertouch Light Controller",
-      condition: "GOOD",
-      comment: "Firmware updated to v3.2. All DMX channels tested and working.",
-      staff: "Jose Reyes",
-      date: "2026-05-18",
-      time: "11:00",
-    },
-    {
-      id: 4,
-      item: "QSC Speakers",
-      condition: "GOOD",
-      comment: "Full-range test performed at venue. Output levels optimal.",
-      staff: "Ana Lim",
-      date: "2026-05-17",
-      time: "16:45",
-    },
-    {
-      id: 5,
-      item: "Switcher",
-      condition: "FAIR",
-      comment: "Input channel 3 intermittently dropping. Scheduled for service.",
-      staff: "Juan dela Cruz",
-      date: "2026-05-15",
-      time: "10:20",
-    },
-  ]);
+  // Summary cards, computed from the real inventory (counted in units)
+  const stats = useMemo(() => {
+    const sum = (items, pick) => items.reduce((acc, i) => acc + pick(i), 0);
+    const inUse = inventoryList.filter((i) => i.rawStatus === "in_use");
+    const maintenance = inventoryList.filter((i) => i.rawStatus === "under_maintenance");
+    const usable = inventoryList.filter(
+      (i) => i.rawStatus !== "under_maintenance" && i.rawStatus !== "retired"
+    );
 
-  // Upcoming Bookings for Calendar View matching image_e83f0a.jpg
-  const upcomingBookings = [
-    { name: "Tech Corp Annual Conference", client: "Tech Corp Inc.", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-05" },
-    { name: "SM Prom Night", client: "SM Group", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-06" },
-    { name: "BDO Seminar", client: "BDO Unibank", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-07" },
-    { name: "Church Worship Night", client: "CCF Manila", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-11" },
-    { name: "Product Launch", client: "Globe Telecom", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-12" },
-    { name: "Wedding: Santos", client: "Maria Santos", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-13" },
-    { name: "Training Workshop", client: "Accenture PH", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-14" },
-    { name: "Awards Ceremony", client: "PLDT", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-18" },
-    { name: "Festival Night", client: "Ayala Corp", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-19" },
-    { name: "Gaming Tournament", client: "Global E-Sports", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-20" },
-    { name: "Graduation Ceremony", client: "UST Manila", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-21" },
-    { name: "Corporate Gala", client: "Jollibee Corp", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-25" },
-    { name: "Forum & Summit", client: "DTI Philippines", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-27" },
-    { name: "Company Townhall", client: "Meralco", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-28" },
-  ];
+    return {
+      total: sum(inventoryList, (i) => i.total),
+      available: sum(usable, (i) => i.available),
+      deployed: sum(inUse, (i) => i.total - i.available),
+      maintenance: sum(maintenance, (i) => i.total),
+    };
+  }, [inventoryList]);
 
-  // Calendar Scheduled Events Database
-  const calendarEventMarkers = [
-    { date: "2026-06-05", name: "Tech Corp Annual Con", color: "bg-red-600" },
-    { date: "2026-06-06", name: "SM Prom Night", color: "bg-purple-500" },
-    { date: "2026-06-07", name: "BDO Seminar", color: "bg-blue-500" },
-    { date: "2026-06-11", name: "Church Worship Night", color: "bg-purple-500" },
-    { date: "2026-06-12", name: "Product Launch", color: "bg-red-600" },
-    { date: "2026-06-13", name: "Wedding: Santos", color: "bg-red-600" },
-    { date: "2026-06-14", name: "Training Workshop", color: "bg-blue-500" },
-    { date: "2026-06-18", name: "Awards Ceremony", color: "bg-purple-500" },
-    { date: "2026-06-19", name: "Festival Night", color: "bg-purple-500" },
-    { date: "2026-06-20", name: "Gaming Tournament", color: "bg-red-600" },
-    { date: "2026-06-21", name: "Graduation Ceremony", color: "bg-blue-500" },
-    { date: "2026-06-25", name: "Corporate Gala", color: "bg-purple-500" },
-    { date: "2026-06-27", name: "Forum & Summit", color: "bg-red-600" },
-    { date: "2026-06-28", name: "Company Townhall", color: "bg-blue-500" },
-  ];
-
-  // Add Equipment Submission
+  // NOTE: still local-only. Saving to the database needs a POST /equipment route.
   const handleAddEquipmentSubmit = (e) => {
     e.preventDefault();
     if (!newEqName.trim()) return;
 
-    const newItem = {
-      id: Date.now(),
-      name: newEqName.trim(),
-      category: newEqCategory,
-      availability: `${newEqQtyTotal}/${newEqQtyTotal}`,
-      status: newEqStatus,
-      lastCheck: new Date().toISOString().split("T")[0],
-      statusColor: newEqStatus === "AVAILABLE" ? "emerald" : newEqStatus === "DEPLOYED" ? "blue" : "amber",
-    };
+    const total = Math.max(1, Number(newEqQtyTotal) || 1);
+    const rawStatus = FORM_STATUS_TO_ENUM[newEqStatus] || "available";
+    const available = rawStatus === "available" ? total : 0;
+    const statusInfo = EQUIPMENT_STATUS[rawStatus];
 
-    setInventoryList((prev) => [newItem, ...prev]);
+    setInventoryList((prev) => [
+      {
+        id: Date.now(),
+        name: newEqName.trim(),
+        category: newEqCategory,
+        total,
+        available,
+        availability: `${available}/${total}`,
+        rawStatus,
+        status: statusInfo.label,
+        statusColor: statusInfo.color,
+        lastCheck: dateKey(new Date()),
+      },
+      ...prev,
+    ]);
+
     setShowAddEquipmentModal(false);
     setNewEqName("");
     setNewEqQtyTotal("1");
     setNewEqStatus("AVAILABLE");
   };
 
-  // Add Condition Log Submission
-  const handleAddLogSubmit = (e) => {
-    e.preventDefault();
-    if (!newLogItem.trim() || !newLogStaff.trim()) return;
-
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
-    const newLog = {
-      id: Date.now(),
-      item: newLogItem.trim(),
-      condition: newLogCondition.toUpperCase(),
-      comment: newLogComment.trim() || "Inspection complete.",
-      staff: newLogStaff.trim(),
-      date: dateStr,
-      time: timeStr,
-    };
-
-    setLogsList((prev) => [newLog, ...prev]);
-    setShowAddLogModal(false);
-    setNewLogItem("");
-    setNewLogStaff("");
-    setNewLogCondition("good");
-    setNewLogComment("");
-  };
-
-  // FR-10: fetch and display a QR code for the given equipment item
   const handleViewQr = async (item) => {
     setQrModalItem(item);
-    setQrCodeImage(null); // reset while loading
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.error("No active session");
-      return;
-    }
+    setQrCodeImage(null);
 
     try {
-      const response = await fetch(`${API_URL}/equipment/${item.id}/qrcode`, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/equipment/${item.id}/qrcode`, { headers });
       const data = await response.json();
       setQrCodeImage(data.qrcode_base64);
     } catch (error) {
@@ -240,74 +218,70 @@ const Inventory = () => {
     }
   };
 
-  // Dynamic Calendar Grid Math (with other months visible)
-  const nextMonth = () => {
-    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-  };
-
-  const prevMonth = () => {
-    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  };
-
-  const renderCalendarCells = () => {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-
-    const firstDayIndex = new Date(year, month, 1).getDay(); // Sunday=0, Monday=1
-    const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-
-    const cells = [];
-
-    // 1. Previous Month Overflow
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const dayNum = daysInPrevMonth - i;
-      const prevDateObj = new Date(year, month - 1, dayNum);
-      const dateString = `${prevDateObj.getFullYear()}-${String(prevDateObj.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-      const events = calendarEventMarkers.filter((e) => e.date === dateString);
-
-      cells.push({
-        dayNum,
-        isCurrentMonth: false,
-        events,
-      });
-    }
-
-    // 2. Current Month Days
-    for (let day = 1; day <= daysInCurrentMonth; day++) {
-      const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const events = calendarEventMarkers.filter((e) => e.date === dateString);
-
-      cells.push({
-        dayNum: day,
-        isCurrentMonth: true,
-        events,
-      });
-    }
-
-    // 3. Next Month Overflow (Padded up to 35)
-    const remaining = 35 - cells.length > 0 ? 35 - cells.length : 42 - cells.length;
-    for (let day = 1; day <= remaining; day++) {
-      const nextDateObj = new Date(year, month + 1, day);
-      const dateString = `${nextDateObj.getFullYear()}-${String(nextDateObj.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      const events = calendarEventMarkers.filter((e) => e.date === dateString);
-
-      cells.push({
-        dayNum: day,
-        isCurrentMonth: false,
-        events,
-      });
-    }
-
-    return cells;
-  };
-
-  // Filter Computations
   const filteredInventory = inventoryList.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(inventorySearch.toLowerCase());
-    const matchesCat = selectedCategory === "All" || item.category.toUpperCase() === selectedCategory.toUpperCase();
+    const matchesCat =
+      selectedCategory === "All" || item.category.toUpperCase() === selectedCategory.toUpperCase();
     return matchesSearch && matchesCat;
   });
+
+  /* --------------------------- condition logs --------------------------- */
+  const fetchLogs = useCallback(async () => {
+    setLogsLoading(true);
+    setLogsError(false);
+
+    const { data, error } = await supabase
+      .from("condition_logs")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load condition logs:", error);
+      setLogsError(true);
+      setLogsList([]);
+    } else {
+      setLogsList(data.map(toLogRow));
+    }
+    setLogsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  const handleAddLogSubmit = async (e) => {
+    e.preventDefault();
+    if (!newLogItem.trim() || !newLogStaff.trim()) return;
+
+    setSavingLog(true);
+    setLogFormError("");
+
+    const { data, error } = await supabase
+      .from("condition_logs")
+      .insert({
+        equipment_name: newLogItem.trim(),
+        staff_name: newLogStaff.trim(),
+        condition: newLogCondition,
+        comment: newLogComment.trim() || "Inspection complete.",
+      })
+      .select()
+      .single();
+
+    setSavingLog(false);
+
+    if (error) {
+      console.error("Failed to save condition log:", error);
+      setLogFormError("Could not save the log. Please try again.");
+      return;
+    }
+
+    setLogsList((prev) => [toLogRow(data), ...prev]);
+    setShowAddLogModal(false);
+    setNewLogItem("");
+    setNewLogStaff("");
+    setNewLogCondition("good");
+    setNewLogComment("");
+  };
 
   const filteredLogs = logsList.filter(
     (l) =>
@@ -315,90 +289,154 @@ const Inventory = () => {
       l.staff.toLowerCase().includes(logSearch.toLowerCase())
   );
 
+  /* --------------------------- booking calendar --------------------------- */
+  useEffect(() => {
+    const fetchCalendarBookings = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_URL}/bookings/`, { headers });
+
+        if (!response.ok) {
+          console.error("Failed to load bookings:", await response.text());
+          return;
+        }
+
+        const data = await response.json();
+        setCalendarBookings(
+          data.map((b) => ({
+            id: b.id,
+            name: b.event_name || "Untitled Event",
+            client: b.client_name || "Unknown",
+            status: b.status || "pending",
+            date: b.event_date || "",
+            equipment: Array.isArray(b.booking_equipment)
+              ? b.booking_equipment.map((be) => be.equipment?.name).filter(Boolean)
+              : [],
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load bookings:", error);
+      }
+    };
+
+    fetchCalendarBookings();
+  }, []);
+
+  // Equipment name -> category, so each booking can be colored by what it reserves
+  const categoryByName = useMemo(() => {
+    const map = {};
+    inventoryList.forEach((i) => {
+      map[i.name] = i.category;
+    });
+    return map;
+  }, [inventoryList]);
+
+  const scheduledBookings = useMemo(
+    () =>
+      calendarBookings
+        .filter((b) => CALENDAR_STATUSES.includes(b.status) && /^\d{4}-\d{2}-\d{2}$/.test(b.date))
+        .map((b) => {
+          const category = b.equipment.map((n) => categoryByName[n]).find(Boolean);
+          return { ...b, theme: CATEGORY_THEME[category] || DEFAULT_THEME };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [calendarBookings, categoryByName]
+  );
+
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    scheduledBookings.forEach((b) => {
+      (map[b.date] ||= []).push(b);
+    });
+    return map;
+  }, [scheduledBookings]);
+
+  const nextMonth = () =>
+    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  const prevMonth = () =>
+    setCalendarDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+
+  const calendarCells = useMemo(() => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalCells = Math.ceil((firstDayIndex + daysInMonth) / 7) * 7;
+
+    // JS Date rolls over months, so day (i - firstDayIndex + 1) covers the overflow days too
+    return Array.from({ length: totalCells }, (_, i) => {
+      const d = new Date(year, month, i - firstDayIndex + 1);
+      const key = dateKey(d);
+      return {
+        key,
+        dayNum: d.getDate(),
+        isCurrentMonth: d.getMonth() === month,
+        events: eventsByDate[key] || [],
+      };
+    });
+  }, [calendarDate, eventsByDate]);
+
+  const monthPrefix = dateKey(calendarDate).slice(0, 7); // "YYYY-MM"
+  const bookingsThisMonth = scheduledBookings.filter((b) => b.date.startsWith(monthPrefix));
+
   const monthHeading = calendarDate.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
 
+  /* ----------------------------- render ----------------------------- */
+  const tabs = [
+    { id: "inventory", label: "Inventory" },
+    { id: "condition_logs", label: "Condition Logs" },
+    { id: "booking_calendar", label: "Booking Calendar" },
+  ];
+
+  const summaryCards = [
+    { label: "Total Items", value: stats.total, labelColor: "text-neutral-400", valueColor: "text-white" },
+    { label: "Available", value: stats.available, labelColor: "text-emerald-500", valueColor: "text-emerald-400" },
+    { label: "Deployed", value: stats.deployed, labelColor: "text-blue-500", valueColor: "text-blue-400" },
+    { label: "Maintenance", value: stats.maintenance, labelColor: "text-amber-500", valueColor: "text-amber-400" },
+  ];
+
   return (
     <div className="w-full space-y-6 font-['Montserrat',sans-serif] text-white">
-      {/* Panel Wrapper */}
       <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-6 md:p-10 space-y-6">
         <h1 className="text-2xl font-black uppercase tracking-wide text-white">
           Equipment Inventory
         </h1>
 
-        {/* Sub-Navigation Tabs */}
+        {/* Sub-navigation */}
         <div className="flex items-center gap-8 border-b border-[#1b212f] text-xs font-black uppercase tracking-wider">
-          <button
-            type="button"
-            onClick={() => setSubTab("inventory")}
-            className={`pb-3.5 transition cursor-pointer whitespace-nowrap ${
-              subTab === "inventory"
-                ? "text-red-600 border-b-2 border-red-600"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Inventory
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("condition_logs")}
-            className={`pb-3.5 transition cursor-pointer whitespace-nowrap ${
-              subTab === "condition_logs"
-                ? "text-red-600 border-b-2 border-red-600"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Condition Logs
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("booking_calendar")}
-            className={`pb-3.5 transition cursor-pointer whitespace-nowrap ${
-              subTab === "booking_calendar"
-                ? "text-red-600 border-b-2 border-red-600"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            Booking Calendar
-          </button>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setSubTab(tab.id)}
+              className={`pb-3.5 transition cursor-pointer whitespace-nowrap ${
+                subTab === tab.id
+                  ? "text-red-600 border-b-2 border-red-600"
+                  : "text-neutral-400 hover:text-white"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* ============================================================== */}
-        {/* SUB-TAB 1: INVENTORY (Image e83ee7.jpg)                         */}
-        {/* ============================================================== */}
+        {/* ============================ INVENTORY ============================ */}
         {subTab === "inventory" && (
           <div className="space-y-6">
-            {/* 4 Summary Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                  Total Items
-                </p>
-                <h3 className="text-3xl font-black text-white">218</h3>
-              </div>
-              <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
-                  Available
-                </p>
-                <h3 className="text-3xl font-black text-emerald-400">198</h3>
-              </div>
-              <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
-                  Deployed
-                </p>
-                <h3 className="text-3xl font-black text-blue-400">20</h3>
-              </div>
-              <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
-                  Maintenance
-                </p>
-                <h3 className="text-3xl font-black text-amber-400">20</h3>
-              </div>
+              {summaryCards.map((card) => (
+                <div key={card.label} className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${card.labelColor}`}>
+                    {card.label}
+                  </p>
+                  <h3 className={`text-3xl font-black ${card.valueColor}`}>{card.value}</h3>
+                </div>
+              ))}
             </div>
 
-            {/* Filter & Action Toolbar */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -434,7 +472,6 @@ const Inventory = () => {
               </button>
             </div>
 
-            {/* Data Table */}
             <div className="overflow-x-auto border border-[#1b212f] rounded-2xl bg-[#090b10]">
               <table className="w-full text-left min-w-[840px] text-xs">
                 <thead>
@@ -456,38 +493,27 @@ const Inventory = () => {
                           <span className="font-bold text-white">{item.name}</span>
                         </div>
                       </td>
-
                       <td className="py-4">
                         <span className="bg-[#141824] border border-[#1e2638] text-neutral-300 text-[9px] font-black uppercase px-2.5 py-0.5 rounded">
                           {item.category}
                         </span>
                       </td>
-
                       <td className="py-4 font-mono font-bold text-neutral-300">
                         <span className="flex items-center gap-1.5">
                           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                           <span>{item.availability}</span>
                         </span>
                       </td>
-
                       <td className="py-4">
                         <span
                           className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded border ${
-                            item.statusColor === "emerald"
-                              ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
-                              : item.statusColor === "blue"
-                              ? "bg-blue-950/40 text-blue-400 border-blue-800/50"
-                              : "bg-amber-950/40 text-amber-400 border-amber-800/50"
+                            STATUS_BADGE_STYLES[item.statusColor] || STATUS_BADGE_STYLES.neutral
                           }`}
                         >
                           {item.status}
                         </span>
                       </td>
-
-                      <td className="py-4 font-mono text-neutral-400 text-[11px]">
-                        {item.lastCheck}
-                      </td>
-
+                      <td className="py-4 font-mono text-neutral-400 text-[11px]">{item.lastCheck}</td>
                       <td className="py-4 pr-6 text-right">
                         <button
                           type="button"
@@ -505,12 +531,9 @@ const Inventory = () => {
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* SUB-TAB 2: CONDITION LOGS (Image e83eef.jpg)                    */}
-        {/* ============================================================== */}
+        {/* ========================== CONDITION LOGS ========================== */}
         {subTab === "condition_logs" && (
           <div className="space-y-6">
-            {/* Search Bar & Add Button */}
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
@@ -542,7 +565,6 @@ const Inventory = () => {
               </button>
             </div>
 
-            {/* Sync note */}
             <div className="flex items-center justify-between text-xs text-neutral-400 py-1">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
@@ -555,160 +577,166 @@ const Inventory = () => {
               </span>
             </div>
 
-            {/* Table */}
-            <div className="overflow-x-auto border border-[#1b212f] rounded-2xl bg-[#090b10]">
-              <table className="w-full text-left min-w-[800px] text-xs">
-                <thead>
-                  <tr className="border-b border-[#1b212f] text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-[#0b0e14]">
-                    <th className="py-4 pl-6">Item</th>
-                    <th className="py-4">Condition</th>
-                    <th className="py-4">Comment</th>
-                    <th className="py-4">Staff</th>
-                    <th className="py-4 pr-6">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#141824]">
-                  {filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-[#121622] transition-colors">
-                      <td className="py-4 pl-6 font-bold text-white">{log.item}</td>
-                      <td className="py-4">
-                        <span
-                          className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
-                            log.condition === "GOOD"
-                              ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
-                              : "bg-amber-950/40 text-amber-400 border-amber-800/50"
-                          }`}
-                        >
-                          {log.condition}
-                        </span>
-                      </td>
-                      <td className="py-4 text-neutral-400 max-w-sm truncate">{log.comment}</td>
-                      <td className="py-4 text-neutral-300">
-                        <div className="flex items-center gap-1.5">
-                          <User size={13} className="text-neutral-500" />
-                          <span>{log.staff}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 pr-6 font-mono text-[11px] text-neutral-500">
-                        <div className="flex items-center gap-1">
-                          <Clock size={11} />
-                          <span>
-                            {log.date} {log.time}
-                          </span>
-                        </div>
-                      </td>
+            {logsLoading && <p className="text-neutral-500 text-sm">Loading condition logs...</p>}
+
+            {logsError && (
+              <div className="border border-red-900/40 bg-red-950/10 rounded-2xl p-6 text-center text-red-500 text-sm">
+                Could not load condition logs. Check that the condition_logs table exists and you have access.
+              </div>
+            )}
+
+            {!logsLoading && !logsError && filteredLogs.length === 0 && (
+              <div className="border border-[#1b212f] rounded-2xl bg-[#090b10] p-8 text-center text-neutral-400 text-sm">
+                No condition logs yet.
+              </div>
+            )}
+
+            {filteredLogs.length > 0 && (
+              <div className="overflow-x-auto border border-[#1b212f] rounded-2xl bg-[#090b10]">
+                <table className="w-full text-left min-w-[800px] text-xs">
+                  <thead>
+                    <tr className="border-b border-[#1b212f] text-[10px] font-bold text-neutral-500 uppercase tracking-widest bg-[#0b0e14]">
+                      <th className="py-4 pl-6">Item</th>
+                      <th className="py-4">Condition</th>
+                      <th className="py-4">Comment</th>
+                      <th className="py-4">Staff</th>
+                      <th className="py-4 pr-6">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-[#141824]">
+                    {filteredLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-[#121622] transition-colors">
+                        <td className="py-4 pl-6 font-bold text-white">{log.item}</td>
+                        <td className="py-4">
+                          <span
+                            className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
+                              CONDITION_BADGE_STYLES[log.condition] || CONDITION_BADGE_STYLES.FAIR
+                            }`}
+                          >
+                            {log.condition}
+                          </span>
+                        </td>
+                        <td className="py-4 text-neutral-400 max-w-sm truncate">{log.comment}</td>
+                        <td className="py-4 text-neutral-300">
+                          <div className="flex items-center gap-1.5">
+                            <User size={13} className="text-neutral-500" />
+                            <span>{log.staff}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-6 font-mono text-[11px] text-neutral-500">
+                          <div className="flex items-center gap-1">
+                            <Clock size={11} />
+                            <span>
+                              {log.date} {log.time}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ============================================================== */}
-        {/* SUB-TAB 3: BOOKING CALENDAR (Image e83f0a.jpg)                  */}
-        {/* ============================================================== */}
+        {/* ========================= BOOKING CALENDAR ========================= */}
         {subTab === "booking_calendar" && (
-          <div className="space-y-6">
-            <div className="border border-[#1b212f] rounded-2xl bg-[#090b10] overflow-hidden">
-              {/* Header Navigation */}
-              <div className="flex items-center justify-between p-6 border-b border-[#1b212f]">
-                <button
-                  type="button"
-                  onClick={prevMonth}
-                  className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
-                >
-                  <ChevronLeft size={20} />
-                </button>
-                <h2 className="text-base font-black text-white flex items-center gap-2 uppercase tracking-widest">
-                  <CalendarIcon size={18} className="text-red-600" />
-                  {monthHeading.toUpperCase()}
-                </h2>
-                <button
-                  type="button"
-                  onClick={nextMonth}
-                  className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
-                >
-                  <ChevronRight size={20} />
-                </button>
-              </div>
+          <div className="border border-[#1b212f] rounded-2xl bg-[#090b10] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-[#1b212f]">
+              <button
+                type="button"
+                onClick={prevMonth}
+                className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <h2 className="text-base font-black text-white flex items-center gap-2 uppercase tracking-widest">
+                <CalendarIcon size={18} className="text-red-600" />
+                {monthHeading.toUpperCase()}
+              </h2>
+              <button
+                type="button"
+                onClick={nextMonth}
+                className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
 
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 border-b border-[#1b212f] text-center text-[10px] font-bold text-neutral-500 uppercase tracking-widest py-3 bg-[#0b0e14]">
-                <div>SUN</div>
-                <div>MON</div>
-                <div>TUE</div>
-                <div>WED</div>
-                <div>THU</div>
-                <div>FRI</div>
-                <div>SAT</div>
-              </div>
+            <div className="grid grid-cols-7 border-b border-[#1b212f] text-center text-[10px] font-bold text-neutral-500 uppercase tracking-widest py-3 bg-[#0b0e14]">
+              {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => (
+                <div key={d}>{d}</div>
+              ))}
+            </div>
 
-              {/* Dynamic 35 Calendar Cells */}
-              <div className="grid grid-cols-7 text-xs text-neutral-400">
-                {renderCalendarCells().map((cell, i) => (
-                  <div
-                    key={i}
-                    className={`min-h-[110px] border-r border-b border-[#1b212f] p-2.5 flex flex-col justify-between transition-colors ${
-                      !cell.isCurrentMonth
-                        ? "bg-[#06080c]/60 text-neutral-600"
-                        : "bg-[#090b10] hover:bg-[#0d1017]"
+            <div className="grid grid-cols-7 text-xs text-neutral-400">
+              {calendarCells.map((cell) => (
+                <div
+                  key={cell.key}
+                  className={`min-h-[110px] border-r border-b border-[#1b212f] p-2.5 flex flex-col gap-1 transition-colors ${
+                    cell.isCurrentMonth
+                      ? "bg-[#090b10] hover:bg-[#0d1017]"
+                      : "bg-[#06080c]/60 text-neutral-600"
+                  }`}
+                >
+                  <span
+                    className={`font-mono text-xs font-bold ${
+                      cell.isCurrentMonth ? "text-white" : "text-neutral-600"
                     }`}
                   >
-                    <div>
-                      <span
-                        className={`font-mono text-xs font-bold ${
-                          cell.isCurrentMonth ? "text-white" : "text-neutral-600"
-                        }`}
-                      >
-                        {cell.dayNum}
-                      </span>
-                    </div>
+                    {cell.dayNum}
+                  </span>
 
-                    <div className="space-y-1 my-1">
-                      {cell.events.map((evt, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${evt.color} shrink-0`}></div>
-                          <span className="text-[8px] text-neutral-300 truncate leading-none">
-                            {evt.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="h-1"></div>
+                  <div className="space-y-1">
+                    {cell.events.map((evt) => (
+                      <div key={evt.id} className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${evt.theme.dot} shrink-0`}></div>
+                        <span className="text-[8px] text-neutral-300 truncate leading-none">
+                          {evt.name}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6 border-t border-[#1b212f] space-y-6">
+              <div className="flex flex-wrap items-center gap-6 text-[10px] text-neutral-400 uppercase tracking-widest font-bold">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-600"></span> Livestream
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span> Projector
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-500"></span> Lights & Sounds
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-neutral-500"></span> Other
+                </span>
               </div>
 
-              {/* Legend & Upcoming Bookings */}
-              <div className="p-6 border-t border-[#1b212f] space-y-6">
-                <div className="flex items-center gap-6 text-[10px] text-neutral-400 uppercase tracking-widest font-bold">
-                  <span className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-600"></div> Livestream
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div> Projector
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-purple-500"></div> Lights & Sounds
-                  </span>
-                </div>
+              <div className="border border-[#1b212f] rounded-2xl overflow-hidden bg-[#0b0e14]">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 p-4 border-b border-[#1b212f] flex items-center gap-2 bg-[#090b10]">
+                  <CalendarIcon size={14} className="text-red-600" />
+                  Upcoming bookings in {monthHeading}
+                </h3>
 
-                <div className="border border-[#1b212f] rounded-2xl overflow-hidden bg-[#0b0e14]">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 p-4 border-b border-[#1b212f] flex items-center gap-2 bg-[#090b10]">
-                    <CalendarIcon size={14} className="text-red-600" />
-                    UPCOMING BOOKINGS THIS MONTH
-                  </h3>
-
+                {bookingsThisMonth.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-neutral-500">
+                    No pending or confirmed bookings this month.
+                  </p>
+                ) : (
                   <div className="divide-y divide-[#141824]">
-                    {upcomingBookings.map((bkg, index) => (
+                    {bookingsThisMonth.map((bkg) => (
                       <div
-                        key={index}
+                        key={bkg.id}
                         className="p-4 flex items-center justify-between hover:bg-[#121622] transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${bkg.color}`}></div>
+                          <div className={`w-2.5 h-2.5 rounded-full ${bkg.theme.dot}`}></div>
                           <div>
                             <p className="text-xs font-bold text-white">{bkg.name}</p>
                             <p className="text-[10px] text-neutral-500">{bkg.client}</p>
@@ -717,32 +745,28 @@ const Inventory = () => {
 
                         <div className="flex items-center gap-4">
                           <span
-                            className={`${bkg.tagBg} text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded`}
+                            className={`${bkg.theme.tag} text-white text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded`}
                           >
-                            {bkg.type}
+                            {bkg.theme.label}
                           </span>
-                          <span className="text-[10px] font-mono text-neutral-500">
-                            {bkg.date}
-                          </span>
+                          <span className="text-[10px] font-mono text-neutral-500">{bkg.date}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* ============================================================== */}
-      {/* MODAL: ADD EQUIPMENT                                           */}
-      {/* ============================================================== */}
+      {/* ========================== MODAL: ADD EQUIPMENT ========================== */}
       {showAddEquipmentModal && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleAddEquipmentSubmit}
-            className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white animate-in zoom-in duration-150"
+            className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white"
           >
             <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
               <h3 className="text-xs font-black uppercase tracking-wider text-white">
@@ -837,14 +861,12 @@ const Inventory = () => {
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL: ADD CONDITION LOG                                       */}
-      {/* ============================================================== */}
+      {/* ======================== MODAL: ADD CONDITION LOG ======================== */}
       {showAddLogModal && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleAddLogSubmit}
-            className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white animate-in zoom-in duration-150"
+            className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white"
           >
             <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
               <h3 className="text-xs font-black uppercase tracking-wider text-white">
@@ -866,11 +888,17 @@ const Inventory = () => {
               <input
                 type="text"
                 required
+                list="equipment-names"
                 placeholder="e.g. LED Bar Unit 3"
                 value={newLogItem}
                 onChange={(e) => setNewLogItem(e.target.value)}
                 className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
               />
+              <datalist id="equipment-names">
+                {inventoryList.map((i) => (
+                  <option key={i.id} value={i.name} />
+                ))}
+              </datalist>
             </div>
 
             <div>
@@ -915,6 +943,8 @@ const Inventory = () => {
               />
             </div>
 
+            {logFormError && <p className="text-[11px] font-bold text-red-500">{logFormError}</p>}
+
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -925,18 +955,17 @@ const Inventory = () => {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition shadow-lg shadow-red-950/50"
+                disabled={savingLog}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition shadow-lg shadow-red-950/50 disabled:opacity-50"
               >
-                Submit
+                {savingLog ? "Saving..." : "Submit"}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ============================================================== */}
-      {/* MODAL: VIEW QR CODE (FR-10)                                    */}
-      {/* ============================================================== */}
+      {/* ============================ MODAL: VIEW QR ============================ */}
       {qrModalItem && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white text-center">
@@ -954,7 +983,11 @@ const Inventory = () => {
             </div>
 
             {qrCodeImage ? (
-              <img src={qrCodeImage} alt={`QR code for ${qrModalItem.name}`} className="mx-auto w-48 h-48" />
+              <img
+                src={qrCodeImage}
+                alt={`QR code for ${qrModalItem.name}`}
+                className="mx-auto w-48 h-48"
+              />
             ) : (
               <p className="text-xs text-neutral-500 py-12">Loading QR code...</p>
             )}
@@ -967,6 +1000,20 @@ const Inventory = () => {
       )}
     </div>
   );
+};
+
+// Maps a condition_logs row from Supabase to what the table renders
+const toLogRow = (row) => {
+  const { date, time } = formatLogDate(row.created_at);
+  return {
+    id: row.id,
+    item: row.equipment_name,
+    condition: String(row.condition || "fair").toUpperCase(),
+    comment: row.comment || "",
+    staff: row.staff_name,
+    date,
+    time,
+  };
 };
 
 export default Inventory;
