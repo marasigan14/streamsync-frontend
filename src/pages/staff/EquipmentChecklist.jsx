@@ -9,8 +9,6 @@ import {
   User,
   Clock,
   RotateCcw,
-  SlidersHorizontal,
-  Package,
   ScanLine,
   CheckCircle2,
   XCircle,
@@ -18,6 +16,15 @@ import {
 import { Html5Qrcode } from "html5-qrcode";
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+// ------------------------------------------------------------------
+// TABLE: equipment
+// columns: id, category_id, name, qr_code, status (enum), total_quantity,
+//          available_quantity, last_maintained_at, ...
+// category_id is a foreign key; the category name is joined in loadInventory().
+// ------------------------------------------------------------------
+const statusColorFor = (status) =>
+  status === "MAINTENANCE" ? "amber" : status === "DEPLOYED" ? "blue" : "emerald";
 
 const EquipmentChecklist = () => {
   const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar" | "scan_equipment"
@@ -29,7 +36,7 @@ const EquipmentChecklist = () => {
   const [logSearch, setLogSearch] = useState("");
 
   // Form State for Condition Logs
-  const [newItemName, setNewItemName] = useState("");
+  const [newEquipmentId, setNewEquipmentId] = useState("");
   const [newStaffName, setNewStaffName] = useState("");
   const [newCondition, setNewCondition] = useState("good");
   const [newComment, setNewComment] = useState("");
@@ -41,138 +48,215 @@ const EquipmentChecklist = () => {
   const scannerRef = useRef(null);
   const html5QrCodeRef = useRef(null);
 
-  // Master Inventory Items (mock data — not yet wired to live API on this page)
-  const [inventoryList] = useState([
-    { id: 1, name: "Sony FX3 Camera", category: "LIVESTREAM", availability: "4/5", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 2, name: "Cameras", category: "LIVESTREAM", availability: "2/3", status: "MAINTENANCE", lastCheck: "2026-05-19", statusColor: "amber" },
-    { id: 3, name: "Obsbot Camera", category: "LIVESTREAM", availability: "1/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 4, name: "TriCaster Video Production System", category: "LIVESTREAM", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 5, name: "TriCaster Controller", category: "LIVESTREAM", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 6, name: "Switcher", category: "LIVESTREAM", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 7, name: "Recorder", category: "LIVESTREAM", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 8, name: "Communication Sets", category: "LIVESTREAM", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 9, name: "Monitors", category: "LIVESTREAM", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 10, name: "Epson Projector", category: "PROJECTOR", availability: "2/3", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 11, name: "Standing", category: "PROJECTOR", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 12, name: "Camera Stand / Tripod", category: "PROJECTOR", availability: "3/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 13, name: "Screen", category: "PROJECTOR", availability: "1/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 14, name: "Epson Projectors", category: "PROJECTOR", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 15, name: "Projector Stands", category: "PROJECTOR", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 16, name: "Projector Screens", category: "PROJECTOR", availability: "1/1", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 17, name: "Laptop", category: "PROJECTOR", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 18, name: "Wireless Clicker", category: "PROJECTOR", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 19, name: "Wireless Data Transceiver", category: "PROJECTOR", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 20, name: "Projector Mount Clamps", category: "PROJECTOR", availability: "4/4", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 21, name: "HDMI Cable (15m/20m)", category: "CABLE", availability: "2/3", status: "DEPLOYED", lastCheck: "2026-05-19", statusColor: "blue" },
-    { id: 22, name: "Power Extension Cables", category: "CABLE", availability: "4/5", status: "DEPLOYED", lastCheck: "2026-05-19", statusColor: "blue" },
-    { id: 23, name: "DMX Cable (10m)", category: "CABLE", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 24, name: "XLR Audio Cable (5m/10m)", category: "CABLE", availability: "6/8", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 25, name: "CAT6 Network Cables", category: "CABLE", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-15", statusColor: "blue" },
-    { id: 26, name: "SDI Cables (20m)", category: "CABLE", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 27, name: "QSC Subwoofer KS118", category: "AUDIO", availability: "2/2", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 28, name: "QSC Speakers", category: "AUDIO", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 29, name: "Speaker Stand", category: "AUDIO", availability: "2/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 30, name: "Mic Stand", category: "AUDIO", availability: "1/2", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 31, name: "DM3 Digital Console", category: "AUDIO", availability: "1/1", status: "DEPLOYED", lastCheck: "2026-05-18", statusColor: "blue" },
-    { id: 32, name: "Sennheiser Wireless Mic", category: "AUDIO", availability: "2/3", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 33, name: "Tigertouch Light Controller", category: "LIGHTING", availability: "1/1", status: "AVAILABLE", lastCheck: "2026-05-18", statusColor: "emerald" },
-    { id: 34, name: "LED Par", category: "LIGHTING", availability: "8/12", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-    { id: 35, name: "Moving Head Light", category: "LIGHTING", availability: "2/4", status: "DEPLOYED", lastCheck: "2026-05-17", statusColor: "blue" },
-  ]);
+  // ================================================================
+  // Inventory (live from Supabase)
+  // ================================================================
+  const [inventoryList, setInventoryList] = useState([]);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
+  const [inventoryError, setInventoryError] = useState(null);
 
-  // Condition Logs List
-  const [logsList, setLogsList] = useState([
-    {
-      id: 1,
-      item: "Cameras",
-      condition: "GOOD",
-      comment: "Sensor cleaned, white balance calibrated. All functions normal.",
-      staff: "Juan dela Cruz",
-      date: "2026-05-20",
-      time: "09:15",
-    },
-    {
-      id: 2,
-      item: "HDMI Cables",
-      condition: "FAIR",
-      comment: "Minor fraying on 3 cables. Recommend replacement before",
-      staff: "Maria Santos",
-      date: "2026-05-19",
-      time: "14:30",
-    },
-    {
-      id: 3,
-      item: "Tigertouch Light Controller",
-      condition: "GOOD",
-      comment: "Firmware updated to v3.2. All DMX channels tested and working.",
-      staff: "Jose Reyes",
-      date: "2026-05-18",
-      time: "11:00",
-    },
-    {
-      id: 4,
-      item: "QSC Speakers",
-      condition: "GOOD",
-      comment: "Full-range test performed at venue. Output levels optimal.",
-      staff: "Ana Lim",
-      date: "2026-05-17",
-      time: "16:45",
-    },
-    {
-      id: 5,
-      item: "Switcher",
-      condition: "FAIR",
-      comment: "Input channel 3 intermittently dropping. Scheduled for service.",
-      staff: "Juan dela Cruz",
-      date: "2026-05-15",
-      time: "10:20",
-    },
-  ]);
+  const loadInventory = async () => {
+    setInventoryLoading(true);
+    setInventoryError(null);
 
-  // Upcoming Bookings for Calendar Tab
-  const upcomingBookings = [
-    { name: "Tech Corp Annual Conference", client: "Tech Corp Inc.", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-05" },
-    { name: "SM Prom Night", client: "SM Group", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-06" },
-    { name: "BDO Seminar", client: "BDO Unibank", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-07" },
-    { name: "Church Worship Night", client: "CCF Manila", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-11" },
-    { name: "Product Launch", client: "Globe Telecom", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-12" },
-    { name: "Wedding: Santos", client: "Maria Santos", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-13" },
-    { name: "Training Workshop", client: "Accenture PH", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-14" },
-    { name: "Awards Ceremony", client: "PLDT", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-18" },
-    { name: "Festival Night", client: "Ayala Corp", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-19" },
-    { name: "Gaming Tournament", client: "Global E-Sports", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-20" },
-    { name: "Graduation Ceremony", client: "UST Manila", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-21" },
-    { name: "Corporate Gala", client: "Jollibee Corp", type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600", date: "2026-06-25" },
-    { name: "Forum & Summit", client: "DTI Philippines", type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600", date: "2026-06-27" },
-    { name: "Company Townhall", client: "Meralco", type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600", date: "2026-06-28" },
-  ];
+    const { data, error } = await supabase
+      .from("equipment")
+      .select("id, name, status, total_quantity, available_quantity, last_maintained_at, category:category_id(name)")
+      .order("name");
 
-  // Form Submission
-  const handleAddLogSubmit = (e) => {
+    if (error) {
+      console.error("Failed to load inventory:", error);
+      setInventoryError(error.message);
+      setInventoryLoading(false);
+      return;
+    }
+
+    setInventoryList(
+      (data || []).map((row) => {
+        const total = row.total_quantity ?? 0;
+        const available = row.available_quantity ?? 0;
+
+        // status is a Postgres enum: normalize it to AVAILABLE / DEPLOYED / MAINTENANCE
+        const raw = String(row.status || "").toUpperCase();
+        let status;
+        if (raw.includes("MAINT") || raw.includes("REPAIR")) status = "MAINTENANCE";
+        else if (raw.includes("DEPLOY") || raw.includes("OUT") || raw.includes("USE")) status = "DEPLOYED";
+        else if (raw) status = "AVAILABLE";
+        else status = available < total ? "DEPLOYED" : "AVAILABLE";
+
+        return {
+          id: row.id,
+          name: row.name,
+          category: (row.category?.name || "").toUpperCase(),
+          total,
+          available,
+          availability: `${available}/${total}`,
+          status,
+          statusColor: statusColorFor(status),
+          lastCheck: row.last_maintained_at ? row.last_maintained_at.slice(0, 10) : "—",
+        };
+      })
+    );
+    setInventoryLoading(false);
+  };
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  // ================================================================
+  // Condition Logs (live from Supabase: equipment_condition_logs)
+  // ================================================================
+  const [logsList, setLogsList] = useState([]);
+  const [logsError, setLogsError] = useState(null);
+
+  const loadLogs = async () => {
+    setLogsError(null);
+    const { data, error } = await supabase
+      .from("equipment_condition_logs")
+      .select("id, condition, comment, staff_name, created_at, equipment:equipment_id(name)")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Failed to load condition logs:", error);
+      setLogsError(error.message);
+      return;
+    }
+
+    setLogsList(
+      (data || []).map((row) => {
+        const d = new Date(row.created_at);
+        return {
+          id: row.id,
+          item: row.equipment?.name || "Unknown item",
+          condition: (row.condition || "").toUpperCase(),
+          comment: row.comment || "—",
+          staff: row.staff_name,
+          date: d.toLocaleDateString("en-CA"),
+          time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+        };
+      })
+    );
+  };
+
+  const handleAddLogSubmit = async (e) => {
     e.preventDefault();
-    if (!newItemName.trim() || !newStaffName.trim()) return;
+    if (!newEquipmentId || !newStaffName.trim()) return;
 
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0];
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
-    const newEntry = {
-      id: Date.now(),
-      item: newItemName.trim(),
-      condition: newCondition.toUpperCase(),
+    const { error } = await supabase.from("equipment_condition_logs").insert({
+      equipment_id: parseInt(newEquipmentId, 10),
+      condition: newCondition,
       comment: newComment.trim() || "Inspection complete.",
-      staff: newStaffName.trim(),
-      date: dateStr,
-      time: timeStr,
-    };
+      staff_name: newStaffName.trim(),
+    });
 
-    setLogsList((prev) => [newEntry, ...prev]);
+    if (error) {
+      console.error("Failed to save condition log:", error);
+      setLogsError(error.message);
+      return;
+    }
+
     setShowAddLog(false);
-    setNewItemName("");
+    setNewEquipmentId("");
     setNewStaffName("");
     setNewCondition("good");
     setNewComment("");
+    await loadLogs();
   };
+
+  // ================================================================
+  // Booking Calendar (live from Supabase: bookings)
+  // ================================================================
+  const [calMonth, setCalMonth] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
+  const [bookings, setBookings] = useState([]);
+  const [bookingsError, setBookingsError] = useState(null);
+
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const bookingTypeStyle = (eventType) => {
+    const u = String(eventType || "").toUpperCase();
+    if (u.includes("LIVE")) return { type: "Livestream", color: "bg-red-600", tagBg: "bg-red-600" };
+    if (u.includes("PROJ")) return { type: "Projector", color: "bg-blue-500", tagBg: "bg-blue-600" };
+    return { type: "Lights & Sounds", color: "bg-purple-500", tagBg: "bg-purple-600" };
+  };
+
+  const loadBookings = async (monthDate) => {
+    setBookingsError(null);
+    const y = monthDate.getFullYear();
+    const m = monthDate.getMonth();
+    const start = `${y}-${pad(m + 1)}-01`;
+    const end = `${y}-${pad(m + 1)}-${pad(new Date(y, m + 1, 0).getDate())}`;
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("id, event_name, event_type, status, event_date, venue")
+      .gte("event_date", start)
+      .lte("event_date", end)
+      .order("event_date");
+
+    if (error) {
+      console.error("Failed to load bookings:", error);
+      setBookingsError(error.message);
+      setBookings([]);
+      return;
+    }
+
+    setBookings(
+      (data || [])
+        // hide cancelled / rejected bookings
+        .filter((b) => !/CANCEL|REJECT|DECLIN/.test(String(b.status || "").toUpperCase()))
+        .map((b) => ({
+          id: b.id,
+          name: b.event_name,
+          client: b.venue || "—",
+          date: b.event_date,
+          day: parseInt(b.event_date.slice(8, 10), 10),
+          ...bookingTypeStyle(b.event_type),
+        }))
+    );
+  };
+
+  useEffect(() => {
+    loadBookings(calMonth);
+  }, [calMonth]);
+
+  const upcomingBookings = bookings;
+  const monthLabel = calMonth
+    .toLocaleDateString("en-US", { month: "long", year: "numeric" })
+    .toUpperCase();
+  const firstWeekday = calMonth.getDay(); // 0 = Sunday
+  const daysInMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0).getDate();
+  const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+
+  // ================================================================
+  // Recent scans (live from Supabase: equipment_scan_logs)
+  // ================================================================
+  const [recentScans, setRecentScans] = useState([]);
+
+  const loadScans = async () => {
+    const { data, error } = await supabase
+      .from("equipment_scan_logs")
+      .select("id, equipment_id, action, scanned_at")
+      .order("scanned_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Failed to load scan history:", error);
+      return;
+    }
+    setRecentScans(data || []);
+  };
+
+  const equipmentName = (id) =>
+    inventoryList.find((i) => String(i.id) === String(id))?.name || `Equipment #${id}`;
+
+  useEffect(() => {
+    loadLogs();
+    loadScans();
+  }, []);
 
   // ================================================================
   // FR-10: QR Scanner logic
@@ -239,7 +323,7 @@ const EquipmentChecklist = () => {
         },
         body: JSON.stringify({
           equipment_id: parseInt(scannedEquipmentId, 10),
-          action,
+          action, // must be "checkin" or "checkout" (DB constraint)
         }),
       });
 
@@ -251,6 +335,8 @@ const EquipmentChecklist = () => {
       }
 
       setScanResult(data);
+      loadInventory(); // refresh counts in the Inventory tab
+      loadScans(); // refresh scan history
     } catch (err) {
       console.error("Scan submission failed:", err);
       setScanResult({ error: "Network error — could not reach the server." });
@@ -271,7 +357,9 @@ const EquipmentChecklist = () => {
     };
   }, []);
 
-  // Filter computations
+  // ================================================================
+  // Derived data
+  // ================================================================
   const filteredInventory = inventoryList.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(inventorySearch.toLowerCase());
     const matchesCat = selectedCategory === "All" || item.category.toUpperCase() === selectedCategory.toUpperCase();
@@ -282,6 +370,19 @@ const EquipmentChecklist = () => {
     (l) =>
       l.item.toLowerCase().includes(logSearch.toLowerCase()) ||
       l.staff.toLowerCase().includes(logSearch.toLowerCase())
+  );
+
+  // Stat cards computed from the same fetched data as the table
+  const stats = inventoryList.reduce(
+    (acc, item) => {
+      const out = item.total - item.available;
+      acc.total += item.total;
+      acc.available += item.available;
+      if (item.status === "MAINTENANCE") acc.maintenance += out;
+      else acc.deployed += out;
+      return acc;
+    },
+    { total: 0, available: 0, deployed: 0, maintenance: 0 }
   );
 
   return (
@@ -355,25 +456,25 @@ const EquipmentChecklist = () => {
                 <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
                   Total Items
                 </p>
-                <h3 className="text-3xl font-black text-white">218</h3>
+                <h3 className="text-3xl font-black text-white">{stats.total}</h3>
               </div>
               <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">
                   Available
                 </p>
-                <h3 className="text-3xl font-black text-emerald-400">198</h3>
+                <h3 className="text-3xl font-black text-emerald-400">{stats.available}</h3>
               </div>
               <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">
                   Deployed
                 </p>
-                <h3 className="text-3xl font-black text-blue-400">20</h3>
+                <h3 className="text-3xl font-black text-blue-400">{stats.deployed}</h3>
               </div>
               <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
                 <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
                   Maintenance
                 </p>
-                <h3 className="text-3xl font-black text-amber-400">20</h3>
+                <h3 className="text-3xl font-black text-amber-400">{stats.maintenance}</h3>
               </div>
             </div>
 
@@ -404,6 +505,16 @@ const EquipmentChecklist = () => {
               </select>
             </div>
 
+            {/* Loading / error states */}
+            {inventoryLoading && (
+              <p className="text-xs text-neutral-500">Loading inventory...</p>
+            )}
+            {inventoryError && (
+              <p className="text-xs text-red-500">
+                Could not load inventory: {inventoryError}
+              </p>
+            )}
+
             {/* Inventory Data Table */}
             <div className="overflow-x-auto border border-[#1b212f] rounded-2xl bg-[#090b10]">
               <table className="w-full text-left min-w-[820px] text-xs">
@@ -418,6 +529,14 @@ const EquipmentChecklist = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#141824]">
+                  {!inventoryLoading && !inventoryError && filteredInventory.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-neutral-500">
+                        No equipment found.
+                      </td>
+                    </tr>
+                  )}
+
                   {filteredInventory.map((item) => (
                     <tr key={item.id} className="hover:bg-[#121622] transition-colors">
                       <td className="py-4 pl-6">
@@ -435,7 +554,11 @@ const EquipmentChecklist = () => {
 
                       <td className="py-4 font-mono font-bold text-neutral-300">
                         <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              item.available === 0 ? "bg-red-500" : "bg-emerald-500"
+                            }`}
+                          ></span>
                           <span>{item.availability}</span>
                         </span>
                       </td>
@@ -519,7 +642,7 @@ const EquipmentChecklist = () => {
                   Condition reports submitted by staff from the Inventory page are automatically synced here.
                 </span>
               </div>
-              <span className="text-[10px] text-neutral-500 font-mono">0 from staff</span>
+              <span className="text-[10px] text-neutral-500 font-mono">{logsList.length} entries</span>
             </div>
 
             {/* COLLAPSIBLE NEW CONDITION LOG FORM */}
@@ -537,14 +660,19 @@ const EquipmentChecklist = () => {
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
                       Item Name *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       required
-                      placeholder="e.g. LED Bar Unit 3"
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      className="w-full bg-[#0f121a] border border-[#1b212f] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
-                    />
+                      value={newEquipmentId}
+                      onChange={(e) => setNewEquipmentId(e.target.value)}
+                      className="w-full bg-[#0f121a] border border-[#1b212f] rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-red-600 cursor-pointer"
+                    >
+                      <option value="">Select equipment...</option>
+                      {inventoryList.map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -608,6 +736,10 @@ const EquipmentChecklist = () => {
               </form>
             )}
 
+            {logsError && (
+              <p className="text-xs text-red-500">Could not load condition logs: {logsError}</p>
+            )}
+
             {/* Condition Logs Table */}
             <div className="overflow-x-auto border border-[#1b212f] rounded-2xl bg-[#090b10]">
               <table className="w-full text-left min-w-[780px] text-xs">
@@ -629,6 +761,8 @@ const EquipmentChecklist = () => {
                           className={`px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
                             log.condition === "GOOD"
                               ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
+                              : log.condition === "POOR"
+                              ? "bg-red-950/40 text-red-400 border-red-800/50"
                               : "bg-amber-950/40 text-amber-400 border-amber-800/50"
                           }`}
                         >
@@ -669,16 +803,18 @@ const EquipmentChecklist = () => {
               <div className="flex items-center justify-between p-6 border-b border-[#1b212f]">
                 <button
                   type="button"
+                  onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
                   className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <h2 className="text-base font-black text-white flex items-center gap-2 uppercase tracking-widest">
                   <CalendarIcon size={18} className="text-red-600" />
-                  JUNE 2026
+                  {monthLabel}
                 </h2>
                 <button
                   type="button"
+                  onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
                   className="p-1.5 text-neutral-500 hover:text-white transition cursor-pointer"
                 >
                   <ChevronRight size={20} />
@@ -696,27 +832,16 @@ const EquipmentChecklist = () => {
                 <div>SAT</div>
               </div>
 
-              {/* 35 Calendar Cells */}
-              <div className="grid grid-cols-7 grid-rows-5 text-xs text-neutral-400">
-                {Array.from({ length: 35 }).map((_, i) => {
-                  const day = i - 1; // Align 1st on Monday
-                  const isCurrentMonth = day >= 1 && day <= 30;
+              {bookingsError && (
+                <p className="p-4 text-xs text-red-500">Could not load bookings: {bookingsError}</p>
+              )}
 
-                  let cellEvents = [];
-                  if (day === 5) cellEvents = [{ name: "Tech Corp Annual Con", color: "bg-red-600" }];
-                  if (day === 6) cellEvents = [{ name: "SM Prom Night", color: "bg-purple-500" }];
-                  if (day === 7) cellEvents = [{ name: "BDO Seminar", color: "bg-blue-500" }];
-                  if (day === 11) cellEvents = [{ name: "Church Worship Night", color: "bg-purple-500" }];
-                  if (day === 12) cellEvents = [{ name: "Product Launch", color: "bg-red-600" }];
-                  if (day === 13) cellEvents = [{ name: "Wedding: Santos", color: "bg-red-600" }];
-                  if (day === 14) cellEvents = [{ name: "Training Workshop", color: "bg-blue-500" }];
-                  if (day === 18) cellEvents = [{ name: "Awards Ceremony", color: "bg-purple-500" }];
-                  if (day === 19) cellEvents = [{ name: "Festival Night", color: "bg-purple-500" }];
-                  if (day === 20) cellEvents = [{ name: "Gaming Tournament", color: "bg-red-600" }];
-                  if (day === 21) cellEvents = [{ name: "Graduation Ceremony", color: "bg-blue-500" }];
-                  if (day === 25) cellEvents = [{ name: "Corporate Gala", color: "bg-purple-500" }];
-                  if (day === 27) cellEvents = [{ name: "Forum & Summit", color: "bg-red-600" }];
-                  if (day === 28) cellEvents = [{ name: "Company Townhall", color: "bg-blue-500" }];
+              {/* Calendar cells */}
+              <div className="grid grid-cols-7 text-xs text-neutral-400">
+                {Array.from({ length: cellCount }).map((_, i) => {
+                  const day = i - firstWeekday + 1;
+                  const isCurrentMonth = day >= 1 && day <= daysInMonth;
+                  const cellEvents = isCurrentMonth ? upcomingBookings.filter((b) => b.day === day) : [];
 
                   return (
                     <div
@@ -729,14 +854,17 @@ const EquipmentChecklist = () => {
                         <span className="text-white font-bold text-xs font-mono">{day}</span>
                       )}
                       <div className="mt-2 space-y-1">
-                        {cellEvents.map((evt, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5">
+                        {cellEvents.slice(0, 3).map((evt) => (
+                          <div key={evt.id} className="flex items-center gap-1.5">
                             <div className={`w-1.5 h-1.5 rounded-full ${evt.color} shrink-0`}></div>
                             <span className="text-[8px] text-neutral-300 truncate leading-none">
                               {evt.name}
                             </span>
                           </div>
                         ))}
+                        {cellEvents.length > 3 && (
+                          <span className="text-[8px] text-neutral-500">+{cellEvents.length - 3} more</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -765,6 +893,9 @@ const EquipmentChecklist = () => {
                   </h3>
 
                   <div className="divide-y divide-[#141824]">
+                    {upcomingBookings.length === 0 && (
+                      <p className="p-4 text-xs text-neutral-500">No bookings this month.</p>
+                    )}
                     {upcomingBookings.map((bkg, index) => (
                       <div
                         key={index}
@@ -848,7 +979,7 @@ const EquipmentChecklist = () => {
                     <h3 className="text-sm font-black uppercase tracking-wider text-white mb-1">
                       QR Code Scanned
                     </h3>
-                    <p className="text-xs text-neutral-500">Equipment ID: {scannedEquipmentId}</p>
+                    <p className="text-xs text-neutral-300">{equipmentName(scannedEquipmentId)}</p>
                     <p className="text-xs text-neutral-500 mt-1">What would you like to do?</p>
                   </div>
                   <div className="flex gap-3">
@@ -918,6 +1049,38 @@ const EquipmentChecklist = () => {
                     Try Again
                   </button>
                 </>
+              )}
+            </div>
+
+            {/* Recent scans */}
+            <div className="border border-[#1b212f] rounded-2xl bg-[#090b10] overflow-hidden">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-neutral-400 p-4 border-b border-[#1b212f] bg-[#0b0e14]">
+                Recent Scans
+              </h3>
+              {recentScans.length === 0 ? (
+                <p className="p-4 text-xs text-neutral-500">No scans yet.</p>
+              ) : (
+                <div className="divide-y divide-[#141824]">
+                  {recentScans.map((s) => (
+                    <div key={s.id} className="p-4 flex items-center justify-between text-xs">
+                      <span className="font-bold text-white">{equipmentName(s.equipment_id)}</span>
+                      <div className="flex items-center gap-4">
+                        <span
+                          className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded border ${
+                            s.action === "checkout"
+                              ? "bg-blue-950/40 text-blue-400 border-blue-800/50"
+                              : "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
+                          }`}
+                        >
+                          {s.action === "checkout" ? "Checked out" : "Checked in"}
+                        </span>
+                        <span className="font-mono text-[10px] text-neutral-500">
+                          {new Date(s.scanned_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

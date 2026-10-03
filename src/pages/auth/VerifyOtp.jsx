@@ -1,14 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Phone, ArrowLeft, RotateCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../../supabaseClient';
 import heroImage from '../../assets/hero.png';
+
+const API = import.meta.env.VITE_API_URL;
+
+// Calls the FastAPI OTP endpoints (/otp/send, /otp/verify)
+const callOtp = async (path, body) => {
+  const res = await fetch(`${API}/otp/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === 'string' ? data.detail : 'Request failed. Please try again.'
+    );
+  }
+  return data;
+};
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Retrieve email AND phone passed from the Register page
+
+  // Email and phone passed from the Register page
   const email = location.state?.email || '';
   const phone = location.state?.phone || '';
 
@@ -19,6 +36,11 @@ const VerifyOtp = () => {
   const [resending, setResending] = useState(false);
 
   const inputRefs = useRef([]);
+
+  // If the page was opened/refreshed without a phone, go back to registration
+  useEffect(() => {
+    if (!phone) navigate('/register', { replace: true });
+  }, [phone, navigate]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -54,17 +76,15 @@ const VerifyOtp = () => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').trim();
     if (/^\d{6}$/.test(pastedData)) {
-      const digits = pastedData.split('');
-      setOtp(digits);
+      setOtp(pastedData.split(''));
       inputRefs.current[5]?.focus();
     }
   };
 
-  // Verify OTP using the mock-supported Edge Function
   const handleVerify = async (e) => {
     e.preventDefault();
     const token = otp.join('');
-    
+
     if (token.length < 6) {
       setErrorMessage('Please enter all 6 digits.');
       return;
@@ -73,35 +93,28 @@ const VerifyOtp = () => {
     setLoading(true);
     setErrorMessage('');
 
-    // Call the updated backend function to verify the SMS code and clean up database table
-    const { data, error } = await supabase.functions.invoke('verify-sms-otp', {
-      body: { phone: phone, otp: token }
-    });
-
-    if (error || !data?.success) {
-      setErrorMessage(error?.message || data?.message || 'Invalid or expired code.');
+    try {
+      await callOtp('verify', { phone, code: token });
+      navigate('/verify-email', { state: { email } });
+    } catch (err) {
+      setErrorMessage(err.message);
       setLoading(false);
-    } else {
-      // Verification successful -> Direct to login or success notice
-      navigate('/verify-email', { state: { email: email } });
     }
   };
 
-  // Resend OTP handler via Edge Function
   const handleResend = async () => {
-    if (resending) return; 
+    if (resending) return;
     setResending(true);
     setErrorMessage('');
 
-    const { data, error } = await supabase.functions.invoke('send-otp-code', {
-      body: { phone: phone }
-    });
-
-    if (error || !data?.success) {
-      setErrorMessage(error?.message || 'Failed to resend OTP.');
-    } else {
+    try {
+      await callOtp('send', { phone });
       setTimeLeft(5 * 60);
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
       alert('A new verification code has been sent to your phone!');
+    } catch (err) {
+      setErrorMessage(err.message);
     }
     setResending(false);
   };
@@ -109,9 +122,9 @@ const VerifyOtp = () => {
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
       {/* --- LEFT SIDE: Branding --- */}
-      <div 
+      <div
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }} 
+        style={{ backgroundImage: `url(${heroImage})` }}
       >
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="absolute bottom-12 left-12 z-10">
@@ -128,8 +141,7 @@ const VerifyOtp = () => {
       {/* --- RIGHT SIDE: OTP Verification Card --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 relative">
         <div className="w-full max-w-md bg-[#121212] p-8 md:p-10 rounded-3xl border border-neutral-800 shadow-2xl">
-          
-          <button 
+          <button
             onClick={() => navigate('/register')}
             className="flex items-center text-xs text-neutral-400 hover:text-white transition-colors mb-6"
           >
@@ -169,8 +181,10 @@ const VerifyOtp = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs text-neutral-400">
-              <span>Time remaining: <strong className="text-neutral-200">{formatTime(timeLeft)}</strong></span>
-              <button 
+              <span>
+                Time remaining: <strong className="text-neutral-200">{formatTime(timeLeft)}</strong>
+              </span>
+              <button
                 type="button"
                 onClick={handleResend}
                 disabled={resending}

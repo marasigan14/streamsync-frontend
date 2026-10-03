@@ -1,27 +1,40 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; 
+import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Phone, Building, Check, X, Eye, EyeOff, FileText, DollarSign, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import heroImage from '../../assets/hero.png';
 
+const API = import.meta.env.VITE_API_URL;
 
+// Asks the FastAPI backend to text a 6-digit code (UniSMS) to the given phone
+const sendOtp = async (phone) => {
+  const res = await fetch(`${API}/otp/send`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      typeof data.detail === 'string' ? data.detail : 'Could not send the code. Please try again.'
+    );
+  }
+  return data;
+};
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  
-  // 1. Setup state for our form inputs
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     company: '',
-    role: 'Client',
     password: '',
     confirmPassword: ''
   });
-  
-  // 2. States for toggles and modals (NEW)
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
@@ -30,30 +43,28 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // 3. Handle input changes
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 4. Handle form submission
   const handleRegister = async (e) => {
     e.preventDefault();
-    
-    // Check if terms are agreed to (NEW)
+
     if (!agreeTerms) {
-      setMessage("You must agree to the Terms & Conditions.");
+      setMessage('You must agree to the Terms & Conditions.');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setMessage("Passwords do not match!");
+      setMessage('Passwords do not match!');
       return;
     }
 
     setLoading(true);
     setMessage('');
 
-    // Send data to Supabase
+    // 1. Create the Supabase Auth account.
+    // Public registration is always a client. Staff and admin accounts are created by an admin.
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -63,7 +74,7 @@ const RegisterPage = () => {
           last_name: formData.lastName,
           phone: formData.phone,
           company: formData.company,
-          role: formData.role
+          role: 'client'
         }
       }
     });
@@ -74,40 +85,35 @@ const RegisterPage = () => {
       return;
     }
 
-    // THIS IS THE MAGIC FIX FOR TC-M01-004
-    // If user exists, Supabase returns an empty identities array instead of an error
+    // If the email is already registered, Supabase returns an empty identities array instead of an error
     if (data?.user?.identities && data.user.identities.length === 0) {
-      setMessage("An account with this email address already exists. Please log in or use a different email.");
-      setLoading(false);
-      return; // This stops the redirect!
-    }
-
-    // --- NEW: SEND SMS OTP BEFORE REDIRECTING ---
-    const { data: otpData, error: otpError } = await supabase.functions.invoke('send-otp-code', {
-      body: { phone: formData.phone }
-    });
-
-    // CHANGE THIS BLOCK TEMPORARILY TO INSPECT THE DATA:
-    if (otpError || !otpData?.success) {
-      console.error("RAW OTP ERROR:", otpError);
-      console.error("RAW OTP DATA:", otpData); // <-- This will show us the exact response
-      setMessage(`SMS Error: ${otpData?.message || otpError?.message || 'Unknown error'}`);
+      setMessage('An account with this email address already exists. Please log in or use a different email.');
       setLoading(false);
       return;
     }
 
-    // USER VERIFICATIONS
+    // 2. Send the SMS OTP through the FastAPI backend (UniSMS)
+    try {
+      await sendOtp(formData.phone);
+    } catch (err) {
+      console.error('OTP send failed:', err);
+      setMessage(`SMS Error: ${err.message}`);
+      setLoading(false);
+      return;
+    }
+
+    // 3. Go to the OTP verification page
     navigate('/verify-otp', { state: { email: formData.email, phone: formData.phone } });
     setLoading(false);
   };
 
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
-      
+
       {/* --- LEFT SIDE: Branding and Image Collage --- */}
-      <div 
+      <div
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }} 
+        style={{ backgroundImage: `url(${heroImage})` }}
       >
         <div className="absolute inset-0 bg-black/60"></div>
         <div className="absolute bottom-12 left-12 z-10">
@@ -123,9 +129,9 @@ const RegisterPage = () => {
 
       {/* --- RIGHT SIDE: Registration Form --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 relative">
-        
+
         <div className="w-full max-w-2xl bg-neutral-950 p-8 md:p-10 rounded-3xl border border-neutral-800 shadow-2xl">
-          
+
           <div className="mb-8 text-center flex flex-col items-center">
             {/* LSM Logo Placeholder */}
             <div className="w-12 h-12 bg-black flex items-center justify-center rounded border border-neutral-700 mb-4">
@@ -135,7 +141,6 @@ const RegisterPage = () => {
             <p className="text-neutral-400 text-sm">Join Livestream Manila today</p>
           </div>
 
-          {/* Form hooked up to handleRegister */}
           <form onSubmit={handleRegister} className="space-y-5">
 
             {/* Grid for First & Last Name */}
@@ -144,14 +149,14 @@ const RegisterPage = () => {
                 <label className="text-xs font-medium text-neutral-300">First Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    placeholder="Juan" 
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                    required 
+                    placeholder="Juan"
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    required
                   />
                 </div>
               </div>
@@ -159,14 +164,14 @@ const RegisterPage = () => {
                 <label className="text-xs font-medium text-neutral-300">Last Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    placeholder="Dela Cruz" 
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                    required 
+                    placeholder="Dela Cruz"
+                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    required
                   />
                 </div>
               </div>
@@ -177,14 +182,14 @@ const RegisterPage = () => {
               <label className="text-xs font-medium text-neutral-300">Active Email Address <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="juandelacruz@example.com" 
-                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                  required 
+                  placeholder="juandelacruz@example.com"
+                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                  required
                 />
               </div>
             </div>
@@ -194,77 +199,60 @@ const RegisterPage = () => {
               <label className="text-xs font-medium text-neutral-300">Active Phone Number <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input 
-                  type="tel" 
+                <input
+                  type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="+63 912 345 6789" 
-                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                  required 
+                  placeholder="+63 912 345 6789"
+                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                  required
                 />
               </div>
             </div>
 
-            {/* Grid for Company & Role */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-neutral-300">Company <span className="text-neutral-500">(Optional)</span></label>
-                <div className="relative">
-                  <Building className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input 
-                    type="text" 
-                    name="company"
-                    value={formData.company}
-                    onChange={handleChange}
-                    placeholder="Your Company" 
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-neutral-300">Role <span className="text-neutral-500">(Optional)</span></label>
-                <div className="relative">
-                  <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <select 
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-neutral-400 appearance-none"
-                  >
-                    <option value="Client">Client</option>
-                    <option value="Event Manager">Event Manager</option>
-                  </select>
-                </div>
+            {/* Company */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-neutral-300">Company <span className="text-neutral-500">(Optional)</span></label>
+              <div className="relative">
+                <Building className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
+                <input
+                  type="text"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleChange}
+                  placeholder="Your Company"
+                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                />
               </div>
             </div>
 
             {/* Grid for Passwords */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-              {/* Main Pass Field with Eye Toggle */}
+              {/* Password with eye toggle */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input 
-                    type={showPassword ? "text" : "password"} 
+                  <input
+                    type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    placeholder="Create password" 
-                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                    required 
+                    placeholder="Create password"
+                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    required
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)} 
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white focus:outline-none"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-                
-                {/* Dynamic Password Feedback (Appears when typing) */}
+
+                {/* Password requirements (appears while typing) */}
                 {formData.password && (
                   <div className="mt-3 p-3 bg-[#0a0a0a] rounded-xl border border-neutral-800/50 space-y-2">
                     <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-2">Password Requirements</p>
@@ -283,29 +271,29 @@ const RegisterPage = () => {
                 )}
               </div>
 
-              {/* Confirm Password Field with Eye Toggle */}
+              {/* Confirm password with eye toggle */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
-                  <input 
-                    type={showConfirmPassword ? "text" : "password"} 
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
-                    placeholder="Confirm password" 
-                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600" 
-                    required 
+                    placeholder="Confirm password"
+                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    required
                   />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white focus:outline-none"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
 
-                {/* Dynamic Match Feedback */}
+                {/* Password match feedback */}
                 {formData.confirmPassword && (
                   <div className={`mt-3 flex items-center text-xs font-medium ${formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
                     {formData.password === formData.confirmPassword ? (
@@ -318,13 +306,13 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Terms and Conditions connected to Modal */}
+            {/* Terms and Conditions */}
             <div className="flex items-start space-x-3 bg-black border border-neutral-800 p-4 rounded-xl mt-2">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 bg-black border-neutral-700 rounded accent-red-600" 
+                className="mt-1 w-4 h-4 bg-black border-neutral-700 rounded accent-red-600"
               />
               <div className="text-xs text-neutral-400 leading-tight">
                 <span>I agree to the </span>
@@ -334,7 +322,7 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Dynamic Message Box */}
+            {/* Message box */}
             {message && (
               <div className={`text-sm text-center font-medium p-3 rounded-xl border ${message.includes('Success') ? 'bg-green-900/20 border-green-600/50 text-green-400' : 'bg-red-900/20 border-red-600/50 text-red-500'}`}>
                 {message}
@@ -342,8 +330,8 @@ const RegisterPage = () => {
             )}
 
             {/* Submit Button */}
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
               className="w-full bg-[#ff0000] hover:bg-red-700 text-white font-bold py-4 px-6 rounded-xl transition-colors duration-200 mt-4 text-sm tracking-wide disabled:opacity-50"
             >
@@ -365,7 +353,7 @@ const RegisterPage = () => {
       {showTermsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#111111] border border-neutral-800 w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-            
+
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-neutral-800">
               <div className="flex items-center gap-3">
@@ -379,7 +367,7 @@ const RegisterPage = () => {
 
             {/* Scrollable Content */}
             <div className="p-6 overflow-y-auto space-y-6 text-sm text-neutral-300">
-              
+
               <div className="bg-[#1e293b]/20 border border-[#334155] text-[#94a3b8] p-4 rounded-xl">
                 Welcome to <span className="font-bold text-white">StreamSync</span> - Livestream Manila's booking platform. Please read these terms carefully before creating your account.
               </div>
@@ -390,7 +378,7 @@ const RegisterPage = () => {
                   <DollarSign className="text-red-600 w-5 h-5" />
                   <h3 className="text-red-600 font-black uppercase tracking-widest text-base">Payment Terms</h3>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-bold text-white mb-2">1. Quotation System</h4>
@@ -460,7 +448,7 @@ const RegisterPage = () => {
                   <h3 className="text-red-600 font-black uppercase tracking-widest text-base">Cancellation & Refund Policy</h3>
                 </div>
                 <p className="text-neutral-400 mb-4">The following cancellation policy governs all confirmed bookings. By creating an account, you acknowledge and agree to these terms:</p>
-                
+
                 <ol className="list-decimal pl-5 space-y-3 text-neutral-400 mb-6">
                   <li><span className="font-bold text-white">More than 30 days before the event:</span> Full refund of downpayment, less a 5% processing fee which covers administrative and payment gateway charges already incurred.</li>
                   <li><span className="font-bold text-white">15 to 30 days before the event:</span> 50% of the downpayment is retained by Livestream Manila to cover the opportunity cost of the reserved booking slot and the equipment and staff pre-allocation that has already been initiated.</li>
@@ -471,7 +459,7 @@ const RegisterPage = () => {
                   <h4 className="font-bold text-red-500 mb-1">No-Show Policy</h4>
                   <p className="text-neutral-300">If a client does not cancel in advance and does not attend the event ("no-show"), the full downpayment is retained and marked as <span className="text-red-500 font-bold">Forfeited</span>. The client will be flagged in the system and may be required to pay an additional security deposit for future bookings.</p>
                 </div>
-                
+
                 <p className="italic text-neutral-500 text-xs">* Staff time is a billable resource. When a confirmed booking is cancelled, the loss is not limited to equipment reservation. Staff operators have allocated their schedule — often turning down other engagements to ensure availability for your event.</p>
               </div>
 
@@ -508,17 +496,17 @@ const RegisterPage = () => {
             {/* Footer */}
             <div className="p-6 border-t border-neutral-800 flex items-center justify-between bg-[#0a0a0a] rounded-b-2xl">
               <span className="text-xs text-neutral-500">Last updated: June 7, 2026 • Livestream Manila</span>
-              <button 
+              <button
                 onClick={() => {
                   setAgreeTerms(true);
                   setShowTermsModal(false);
-                }} 
+                }}
                 className="bg-[#ff0000] hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center gap-2 text-sm"
               >
                 <CheckCircle2 className="w-4 h-4" /> I AGREE TO TERMS
               </button>
             </div>
-            
+
           </div>
         </div>
       )}

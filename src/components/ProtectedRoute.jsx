@@ -2,17 +2,24 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
+const VALID_ROLES = ["client", "staff", "admin"];
+
+// app_metadata can only be written by the server (unlike user_metadata)
+const getRole = (session) => {
+  const role = (session?.user?.app_metadata?.role || "client").toLowerCase();
+  return VALID_ROLES.includes(role) ? role : "client";
+};
+
 const ProtectedRoute = ({ children, allowedRole }) => {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
-  const [userRole, setUserRole] = useState(null);
+  const [userRole, setUserRole] = useState("client");
   const location = useLocation();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // FIXED: Added .toLowerCase() to the initial load
-      setUserRole((session?.user?.user_metadata?.role || "client").toLowerCase());
+      setUserRole(getRole(session));
       setLoading(false);
     });
 
@@ -20,7 +27,7 @@ const ProtectedRoute = ({ children, allowedRole }) => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUserRole((session?.user?.user_metadata?.role || "client").toLowerCase());
+      setUserRole(getRole(session));
     });
 
     return () => subscription.unsubscribe();
@@ -33,12 +40,10 @@ const ProtectedRoute = ({ children, allowedRole }) => {
       </div>
     );
 
-  // If no session exists, send to login
   if (!session) return <Navigate to="/login" replace />;
 
-  // If role doesn't match, redirect them safely
   if (allowedRole && userRole !== allowedRole) {
-    // SPECIAL EXCEPTION: If a client is trying to view client-related pages, let them through
+    // Exception: clients may view the client pages
     if (
       userRole === "client" &&
       (location.pathname === "/client-main" ||
