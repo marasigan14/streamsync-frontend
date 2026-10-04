@@ -24,8 +24,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Landing Page */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<LoginPage />} />
 
         {/* Auth Routes */}
         <Route path="/login" element={<LoginPage />} />

@@ -573,48 +573,6 @@ const ClientMain = () => {
               </div>
             </div>
 
-            {/* --- OWNER --- */}
-            <div className="mt-16 md:mt-20">
-              <h3 className="text-2xl md:text-3xl font-black tracking-wide uppercase text-center mb-10 text-white">
-                OWNED BY 
-              </h3>
-
-              <div className="flex justify-center">
-                {[
-                  {
-                    image: leader1,
-                    name: "Carlos S. Garcia",
-                    role: "Founder & CEO",
-                    bio: "Tech Enthusiast - Events Management",
-                  },
-                ].map((leader, i) => (
-                  <div
-                    key={i}
-                    className="w-full max-w-sm bg-white dark:bg-[#121212] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 text-center transition-all duration-300 hover:-translate-y-1.5 hover:border-red-600/50 hover:shadow-[0_12px_30px_rgba(255,0,0,0.12)] cursor-pointer"
-                  >
-                    <div className="w-24 h-24 mx-auto mb-4 rounded-full p-[2px] bg-red-600/30">
-                      <img
-                        src={leader.image}
-                        alt={leader.name}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    </div>
-
-                    <h4 className="text-lg font-bold uppercase tracking-wide text-white mb-1">
-                      {leader.name}
-                    </h4>
-
-                    <p className="text-red-600 text-xs font-bold uppercase tracking-wide mb-3">
-                      {leader.role}
-                    </p>
-
-                    <p className="text-neutral-400 text-xs md:text-sm leading-relaxed max-w-[220px] mx-auto">
-                      {leader.bio}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </section>
 
