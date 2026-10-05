@@ -199,7 +199,7 @@ import ventionFiber from "../../assets/lightsSounds/vention-fiberopticcable-100m
 import omni10gang from "../../assets/lightsSounds/omni10gang.jpg";
 import omni15m from "../../assets/lightsSounds/omni15m.jpg";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL || "https://streamsync-backend-4cn7.onrender.com";
 
 // Master inventory catalog
 const equipmentCatalogs = {
