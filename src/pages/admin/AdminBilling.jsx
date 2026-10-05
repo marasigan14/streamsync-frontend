@@ -25,14 +25,21 @@ const authFetch = async (path, options = {}) => {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  const res = await fetch(`${API}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${session?.access_token}`,
-      ...(options.headers || {}),
-    },
-  });
+
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`,
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error("Cannot reach the server. Check that the backend is running.");
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(typeof data.detail === "string" ? data.detail : "Request failed");
@@ -65,17 +72,32 @@ const AdminBilling = () => {
   const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [selectedPayroll, setSelectedPayroll] = useState(null);
-  const [confirmAction, setConfirmAction] = useState(null); // { type: "verify" | "reject", inv }
+  const [confirmAction, setConfirmAction] = useState(null); // { type: "verify" | "reject" | "pay" | "payall", inv?, row? }
+  const [verifyAmount, setVerifyAmount] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+
+  // Payment proof viewer (private Storage file, opened with a short-lived signed link)
+  const [proofView, setProofView] = useState(null); // { loading, url, error }
 
   // Form States
   const [newRule, setNewRule] = useState({ name: "", desc: "", condition: "", value: "" });
 
-  // Staff payroll (sample data, not connected to the database yet)
-  const [staffPayroll, setStaffPayroll] = useState([
-    { id: "PR-1001", name: "John Doe", role: "Camera Operator", period: "May 1 - May 15, 2026", events: 4, amount: "₱18,000", rawAmount: 18000, status: "Pending" },
-    { id: "PR-1002", name: "Jane Smith", role: "Audio Engineer", period: "May 1 - May 15, 2026", events: 5, amount: "₱22,500", rawAmount: 22500, status: "Paid" },
-    { id: "PR-1003", name: "Mike Johnson", role: "Technical Director", period: "May 1 - May 15, 2026", events: 3, amount: "₱25,000", rawAmount: 25000, status: "Pending" },
-  ]);
+  // Staff payroll (real data from /admin/billing/payroll)
+  const today = new Date();
+  const [payrollPeriod, setPayrollPeriod] = useState({
+    year: today.getFullYear(),
+    month: today.getMonth() + 1,
+    half: today.getDate() <= 15 ? 1 : 2,
+  });
+  const [payroll, setPayroll] = useState({ rows: [], summary: null });
+  const [payrollLoading, setPayrollLoading] = useState(true);
+
+  // Pay rates (per role) editor
+  const [isRatesOpen, setIsRatesOpen] = useState(false);
+  const [ratesDraft, setRatesDraft] = useState([]);
+  const [ratesBusy, setRatesBusy] = useState(false);
+  const [ratesError, setRatesError] = useState("");
 
   // Loyalty rules table (display only; the engine applies the built-in 10% rule)
   const [loyaltyRules, setLoyaltyRules] = useState([
@@ -86,6 +108,17 @@ const AdminBilling = () => {
   const triggerToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // Open a payment proof: the backend returns a signed link that expires after a while
+  const openProof = async (paymentId) => {
+    setProofView({ loading: true, url: "", error: "" });
+    try {
+      const data = await authFetch(`/admin/billing/payments/${paymentId}/proof-url`);
+      setProofView({ loading: false, url: data.url, error: "" });
+    } catch (err) {
+      setProofView({ loading: false, url: "", error: err.message });
+    }
   };
 
   const loadBilling = async () => {
@@ -123,13 +156,13 @@ const AdminBilling = () => {
 
   const filteredPayroll = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return staffPayroll.filter(
+    return payroll.rows.filter(
       (pr) =>
         pr.name.toLowerCase().includes(q) ||
         pr.role.toLowerCase().includes(q) ||
         pr.id.toLowerCase().includes(q)
     );
-  }, [staffPayroll, searchQuery]);
+  }, [payroll, searchQuery]);
 
   const paginatedInvoices = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -141,37 +174,150 @@ const AdminBilling = () => {
     return filteredPayroll.slice(start, start + itemsPerPage);
   }, [filteredPayroll, currentPage]);
 
-  // Verify or reject the pending payment proof of an invoice
-  const handleConfirmAction = async () => {
-    if (!confirmAction) return;
-    const { type, inv } = confirmAction;
-    setBusy(true);
+  // Load payroll for the selected half-month period
+  const loadPayroll = async (period = payrollPeriod) => {
     try {
-      await authFetch(`/admin/billing/payments/${inv.pendingPaymentId}/${type}`, {
-        method: "POST",
-      });
-      triggerToast(
-        type === "verify"
-          ? `Payment for ${inv.id} verified`
-          : `Payment for ${inv.id} rejected`
+      const data = await authFetch(
+        `/admin/billing/payroll?year=${period.year}&month=${period.month}&half=${period.half}`
       );
-      await loadBilling();
+      setPayroll({ rows: data.rows || [], summary: data.summary || null });
+      setError("");
     } catch (err) {
       setError(err.message);
     } finally {
-      setBusy(false);
-      setConfirmAction(null);
+      setPayrollLoading(false);
     }
   };
 
-  const handlePayStaff = (id) => {
-    setStaffPayroll((prev) => prev.map((pr) => (pr.id === id ? { ...pr, status: "Paid" } : pr)));
-    triggerToast(`Payout processed for ${id}!`);
+  useEffect(() => {
+    setPayrollLoading(true);
+    loadPayroll(payrollPeriod);
+  }, [payrollPeriod]);
+
+  // Pay rates editor
+  const openRates = async () => {
+    setRatesError("");
+    setIsRatesOpen(true);
+    try {
+      const rows = await authFetch("/admin/billing/rates");
+      setRatesDraft(rows.map((r) => ({ role: r.role, rate: String(r.rate) })));
+    } catch (err) {
+      setRatesError(err.message);
+    }
   };
 
-  const handleProcessAllPending = () => {
-    setStaffPayroll((prev) => prev.map((pr) => ({ ...pr, status: "Paid" })));
-    triggerToast("All pending payouts successfully processed!");
+  const saveRates = async () => {
+    setRatesBusy(true);
+    setRatesError("");
+    try {
+      await authFetch("/admin/billing/rates", {
+        method: "PUT",
+        body: JSON.stringify({
+          rates: ratesDraft
+            .filter((r) => r.role.trim())
+            .map((r) => ({ role: r.role.trim(), rate: Number(r.rate) || 0 })),
+        }),
+      });
+      setIsRatesOpen(false);
+      triggerToast("Pay rates saved");
+      await loadPayroll();
+    } catch (err) {
+      setRatesError(err.message);
+    } finally {
+      setRatesBusy(false);
+    }
+  };
+
+  // Move to the previous (-1) or next (+1) half-month period
+  const shiftPeriod = (direction) => {
+    setCurrentPage(1);
+    setPayrollPeriod((p) => {
+      let { year, month, half } = p;
+      if (direction > 0) {
+        if (half === 1) {
+          half = 2;
+        } else {
+          half = 1;
+          month += 1;
+          if (month > 12) { month = 1; year += 1; }
+        }
+      } else if (half === 2) {
+        half = 1;
+      } else {
+        half = 2;
+        month -= 1;
+        if (month < 1) { month = 12; year -= 1; }
+      }
+      return { year, month, half };
+    });
+  };
+
+  // Open the confirmation dialog (verify asks for the amount, reject asks for a reason)
+  const openConfirm = (type, payload = {}) => {
+    setConfirmError("");
+    setRejectReason("");
+    setVerifyAmount(type === "verify" ? String(payload.inv?.balance ?? "") : "");
+    setConfirmAction({ type, ...payload });
+  };
+
+  const closeConfirm = () => {
+    setConfirmAction(null);
+    setConfirmError("");
+  };
+
+  // Confirmed actions: verify/reject a payment proof, or record staff payouts
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    const { type, inv, row } = confirmAction;
+    setConfirmError("");
+
+    if (type === "verify" && !(Number(verifyAmount) > 0)) {
+      setConfirmError("Enter the amount you received.");
+      return;
+    }
+    if (type === "reject" && !rejectReason.trim()) {
+      setConfirmError("Enter a reason so the client knows what to fix.");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (type === "verify") {
+        await authFetch(`/admin/billing/payments/${inv.pendingPaymentId}/verify`, {
+          method: "POST",
+          body: JSON.stringify({ amount_paid: Number(verifyAmount) }),
+        });
+        triggerToast(`Payment for ${inv.id} verified`);
+        await loadBilling();
+      } else if (type === "reject") {
+        await authFetch(`/admin/billing/payments/${inv.pendingPaymentId}/reject`, {
+          method: "POST",
+          body: JSON.stringify({ reason: rejectReason.trim() }),
+        });
+        triggerToast(`Payment for ${inv.id} rejected`);
+        await loadBilling();
+      } else if (type === "pay") {
+        await authFetch(`/admin/billing/payroll/${row.staffId}/pay`, {
+          method: "POST",
+          body: JSON.stringify(payrollPeriod),
+        });
+        triggerToast(`Payout recorded for ${row.name}`);
+        await loadPayroll();
+      } else if (type === "payall") {
+        const res = await authFetch("/admin/billing/payroll/pay-all", {
+          method: "POST",
+          body: JSON.stringify(payrollPeriod),
+        });
+        triggerToast(`${res.paid} payout(s) recorded`);
+        await loadPayroll();
+      }
+      setError("");
+      closeConfirm();
+    } catch (err) {
+      setConfirmError(err.message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleExportCSV = () => {
@@ -184,7 +330,7 @@ const AdminBilling = () => {
     } else if (activeTab === "staff_payroll") {
       rows = [
         ["ID", "Name", "Role", "Period", "Events", "Amount", "Status"],
-        ...staffPayroll.map((p) => [p.id, p.name, p.role, p.period, p.events, p.rawAmount, p.status]),
+        ...payroll.rows.map((p) => [p.id, p.name, p.role, payroll.summary?.period_label, p.events, p.amount, p.status]),
       ];
     } else {
       rows = [
@@ -391,10 +537,10 @@ const AdminBilling = () => {
                           </button>
                           {inv.pendingPaymentId && (
                             <>
-                              <button onClick={() => setConfirmAction({ type: "verify", inv })} title="Verify payment" className="hover:text-green-500 transition-colors">
+                              <button onClick={() => openConfirm("verify", { inv })} title="Verify payment" className="hover:text-green-500 transition-colors">
                                 <Check size={16} className="text-green-600" />
                               </button>
-                              <button onClick={() => setConfirmAction({ type: "reject", inv })} title="Reject payment" className="hover:text-red-500 transition-colors">
+                              <button onClick={() => openConfirm("reject", { inv })} title="Reject payment" className="hover:text-red-500 transition-colors">
                                 <X size={16} className="text-red-600" />
                               </button>
                             </>
@@ -437,29 +583,55 @@ const AdminBilling = () => {
         </div>
       )}
 
-      {/* STAFF PAYROLL (sample data) */}
+      {/* STAFF PAYROLL */}
       {activeTab === "staff_payroll" && (
         <div className="space-y-6">
-          <div className="p-3 rounded-xl bg-yellow-950/20 border border-yellow-900/40 text-yellow-500 text-[11px] font-semibold">
-            Sample data: staff payroll is not connected to the database yet.
+          {/* Period selector */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => shiftPeriod(-1)}
+                title="Previous period"
+                className="p-2 bg-[#161616] hover:bg-neutral-800 rounded-lg border border-neutral-800"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="text-sm font-bold text-white min-w-[190px] text-center">
+                {payroll.summary?.period_label || "Loading..."}
+              </div>
+              <button
+                onClick={() => shiftPeriod(1)}
+                title="Next period"
+                className="p-2 bg-[#161616] hover:bg-neutral-800 rounded-lg border border-neutral-800"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <p className="text-[11px] text-neutral-500 max-w-md">
+              Pay = events the staff member checked in to (QR scan) x the per-event rate for their role. Edit rates with PAY RATES.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl">
             <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 relative overflow-hidden">
               <DollarSign size={80} className="absolute -right-4 -bottom-4 text-blue-900/20" />
-              <p className="text-[10px] font-bold text-neutral-500 tracking-wider mb-2 uppercase">TOTAL PAYROLL (MTD)</p>
+              <p className="text-[10px] font-bold text-neutral-500 tracking-wider mb-2 uppercase">TOTAL PAYROLL (PERIOD)</p>
               <p className="text-3xl font-black text-white mb-1">
-                {peso(staffPayroll.reduce((acc, curr) => acc + curr.rawAmount, 0))}
+                {payroll.summary ? peso(payroll.summary.total_amount) : "—"}
               </p>
-              <p className="text-xs text-neutral-500 flex items-center gap-1">Period: May 1 - 15</p>
+              <p className="text-xs text-neutral-500 flex items-center gap-1">
+                {payroll.summary ? payroll.summary.staff_count : 0} staff with events
+              </p>
             </div>
             <div className="bg-[#161616] border border-neutral-800 rounded-xl p-5 relative overflow-hidden">
               <Clock size={80} className="absolute -right-4 -bottom-4 text-yellow-900/20" />
               <p className="text-[10px] font-bold text-neutral-500 tracking-wider mb-2 uppercase">PENDING PAYOUTS</p>
               <p className="text-3xl font-black text-white mb-1">
-                {peso(staffPayroll.filter((p) => p.status === "Pending").reduce((acc, curr) => acc + curr.rawAmount, 0))}
+                {payroll.summary ? peso(payroll.summary.pending_amount) : "—"}
               </p>
-              <p className="text-xs text-yellow-500 flex items-center gap-1"><Clock size={12} /> {staffPayroll.filter((p) => p.status === "Pending").length} Staff waiting</p>
+              <p className="text-xs text-yellow-500 flex items-center gap-1">
+                <Clock size={12} /> {payroll.summary ? payroll.summary.pending_count : 0} Staff waiting
+              </p>
             </div>
           </div>
 
@@ -474,12 +646,21 @@ const AdminBilling = () => {
                 className="w-full bg-[#161616] border border-neutral-800 text-sm text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-red-600 transition-colors"
               />
             </div>
-            <button
-              onClick={handleProcessAllPending}
-              className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-colors"
-            >
-              PROCESS ALL PENDING
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={openRates}
+                className="border border-neutral-700 hover:bg-neutral-800 text-white px-4 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-colors"
+              >
+                PAY RATES
+              </button>
+              <button
+                onClick={() => openConfirm("payall")}
+                disabled={!payroll.summary || payroll.summary.pending_count === 0}
+                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-xs font-bold tracking-wide transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                PROCESS ALL PENDING
+              </button>
+            </div>
           </div>
 
           <div className="bg-[#161616] border border-neutral-800 rounded-xl overflow-hidden">
@@ -496,7 +677,11 @@ const AdminBilling = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800">
-                {paginatedPayroll.length > 0 ? (
+                {payrollLoading ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8 text-neutral-500 text-xs uppercase font-bold">Loading payroll...</td>
+                  </tr>
+                ) : paginatedPayroll.length > 0 ? (
                   paginatedPayroll.map((pr) => (
                     <tr key={pr.id} className="text-neutral-300 hover:bg-[#1a1a1a]">
                       <td className="px-6 py-4 font-semibold text-white">{pr.id}</td>
@@ -504,9 +689,9 @@ const AdminBilling = () => {
                         <div className="font-bold text-white">{pr.name}</div>
                         <div className="text-xs text-neutral-500">{pr.role}</div>
                       </td>
-                      <td className="px-6 py-4 text-xs">{pr.period}</td>
+                      <td className="px-6 py-4 text-xs">{payroll.summary?.period_label}</td>
                       <td className="px-6 py-4 text-xs">{pr.events} events</td>
-                      <td className="px-6 py-4 font-bold text-white">{pr.amount}</td>
+                      <td className="px-6 py-4 font-bold text-white">{peso(pr.amount)}</td>
                       <td className="px-6 py-4">{renderStatusBadge(pr.status)}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-4 text-neutral-400">
@@ -515,7 +700,7 @@ const AdminBilling = () => {
                           </button>
                           {pr.status === "Pending" && (
                             <button
-                              onClick={() => handlePayStaff(pr.id)}
+                              onClick={() => openConfirm("pay", { row: pr })}
                               className="bg-red-600/10 text-red-500 border border-red-900/50 hover:bg-red-600 hover:text-white px-3 py-1.5 text-[10px] font-bold rounded transition-colors"
                             >
                               PAY NOW
@@ -527,7 +712,7 @@ const AdminBilling = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center py-8 text-neutral-500 text-xs uppercase font-bold">No staff records found</td>
+                    <td colSpan="7" className="text-center py-8 text-neutral-500 text-xs uppercase font-bold">No checked-in events in this period</td>
                   </tr>
                 )}
               </tbody>
@@ -745,15 +930,25 @@ const AdminBilling = () => {
                   {selectedInvoice.payments.map((p) => (
                     <div key={p.id} className="bg-[#161616] border border-neutral-800 rounded-lg p-3 text-xs flex items-center justify-between gap-3">
                       <div>
-                        <div className="font-bold text-white">{peso(p.amount)}</div>
+                        <div className="font-bold text-white">
+                          {Number(p.amount) > 0
+                            ? peso(p.amount)
+                            : p.status === "rejected"
+                            ? "Rejected"
+                            : "Awaiting verification"}
+                        </div>
                         <div className="text-neutral-500 capitalize">
                           {(p.method || "").replace("_", " ")}
                           {p.ref ? ` · Ref ${p.ref}` : ""}
                         </div>
                         {p.receipt_url && (
-                          <a href={p.receipt_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">
+                          <button
+                            type="button"
+                            onClick={() => openProof(p.id)}
+                            className="text-blue-400 hover:underline"
+                          >
                             View proof
-                          </a>
+                          </button>
                         )}
                       </div>
                       <span
@@ -779,7 +974,7 @@ const AdminBilling = () => {
       {/* PAYROLL SUMMARY MODAL */}
       {selectedPayroll && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-sm p-6 relative">
+          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
             <button onClick={() => setSelectedPayroll(null)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">
               <X size={20} />
             </button>
@@ -797,55 +992,274 @@ const AdminBilling = () => {
                 <span>{selectedPayroll.role}</span>
               </div>
               <div className="flex justify-between border-b border-neutral-800 pb-2">
+                <span className="text-neutral-500">Pay Period</span>
+                <span>{payroll.summary?.period_label}</span>
+              </div>
+              <div className="flex justify-between border-b border-neutral-800 pb-2">
                 <span className="text-neutral-500">Events Worked</span>
                 <span>{selectedPayroll.events} Events</span>
               </div>
               <div className="flex justify-between border-b border-neutral-800 pb-2">
-                <span className="text-neutral-500">Pay Period</span>
-                <span>{selectedPayroll.period}</span>
+                <span className="text-neutral-500">Total Payout</span>
+                <span className="font-bold text-white">{peso(selectedPayroll.amount)}</span>
               </div>
               <div className="flex justify-between pt-1">
-                <span className="text-neutral-500">Total Payout</span>
-                <span className="font-bold text-white">{selectedPayroll.amount}</span>
+                <span className="text-neutral-500">Status</span>
+                <span>{renderStatusBadge(selectedPayroll.status)}</span>
               </div>
+              {selectedPayroll.paidAt && (
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Paid on</span>
+                  <span>{String(selectedPayroll.paidAt).slice(0, 10)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 mb-2">Events</p>
+              {selectedPayroll.details.length === 0 ? (
+                <p className="text-xs text-neutral-500">No event details available.</p>
+              ) : (
+                <div className="space-y-2">
+                  {selectedPayroll.details.map((d, i) => (
+                    <div key={i} className="bg-[#161616] border border-neutral-800 rounded-lg p-3 text-xs flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-white">{d.event}</div>
+                        <div className="text-neutral-500">
+                          {d.date} · {d.role}
+                          {d.checkedInAt
+                            ? ` · in ${new Date(d.checkedInAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+                            : ""}
+                        </div>
+                      </div>
+                      <span className="font-bold text-white">{peso(d.rate)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* VERIFY / REJECT CONFIRMATION MODAL */}
-      {confirmAction && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-sm p-6 text-center">
-            <h3 className="text-base font-bold text-white mb-2">
-              {confirmAction.type === "verify" ? "Verify this payment?" : "Reject this payment?"}
-            </h3>
-            <p className="text-xs text-neutral-400 mb-6">
-              {confirmAction.type === "verify"
-                ? `This confirms the payment proof for ${confirmAction.inv.id}. If the booking is approved, it will be confirmed.`
-                : `The payment proof for ${confirmAction.inv.id} will be marked as rejected, and the client will need to submit a new one.`}
+      {/* PAY RATES MODAL */}
+      {isRatesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setIsRatesOpen(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white">
+              <X size={20} />
+            </button>
+            <h2 className="text-lg font-bold text-white uppercase tracking-wide mb-1">Pay Rates</h2>
+            <p className="text-xs text-neutral-400 mb-4">
+              Pay per checked-in event, by role. The role name should match the role used when assigning staff. Roles without a rate use the default (₱4,500).
             </p>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={handleConfirmAction}
-                disabled={busy}
-                className={`px-5 py-2.5 rounded-xl text-white text-xs font-bold uppercase tracking-wide transition disabled:opacity-50 ${
-                  confirmAction.type === "verify" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
-                }`}
-              >
-                {busy ? "Saving..." : confirmAction.type === "verify" ? "Yes, verify" : "Yes, reject"}
-              </button>
-              <button
-                onClick={() => setConfirmAction(null)}
-                disabled={busy}
-                className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wide transition"
-              >
-                Cancel
-              </button>
+
+            {ratesError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-950/30 border border-red-900/60 text-red-400 text-xs">
+                {ratesError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {ratesDraft.map((r, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={r.role}
+                    onChange={(e) =>
+                      setRatesDraft((prev) => prev.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))
+                    }
+                    placeholder="Role"
+                    className="flex-1 bg-[#161616] border border-neutral-800 text-white rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-600"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    value={r.rate}
+                    onChange={(e) =>
+                      setRatesDraft((prev) => prev.map((x, j) => (j === i ? { ...x, rate: e.target.value } : x)))
+                    }
+                    placeholder="Rate"
+                    className="w-28 bg-[#161616] border border-neutral-800 text-white rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRatesDraft((prev) => prev.filter((_, j) => j !== i))}
+                    title="Remove role"
+                    className="text-neutral-500 hover:text-red-500"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setRatesDraft((prev) => [...prev, { role: "", rate: "" }])}
+              className="mt-3 flex items-center gap-1.5 text-xs font-bold text-neutral-300 hover:text-white"
+            >
+              <Plus size={14} /> ADD ROLE
+            </button>
+
+            <button
+              type="button"
+              onClick={saveRates}
+              disabled={ratesBusy}
+              className="mt-5 w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase py-3 rounded-lg tracking-wide transition-colors disabled:opacity-50"
+            >
+              {ratesBusy ? "Saving..." : "Save Rates"}
+            </button>
           </div>
         </div>
       )}
+
+      {/* PAYMENT PROOF VIEWER */}
+      {proofView && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={() => setProofView(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[90vh] flex flex-col items-center gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setProofView(null)}
+              className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-black/70 border border-neutral-700 text-neutral-300 hover:text-white flex items-center justify-center"
+            >
+              <X size={16} />
+            </button>
+
+            {proofView.loading && <p className="text-xs text-neutral-300 py-10">Loading proof...</p>}
+
+            {proofView.error && (
+              <div className="p-4 rounded-xl bg-red-950/30 border border-red-900/60 text-red-400 text-xs">
+                {proofView.error}
+              </div>
+            )}
+
+            {proofView.url && (
+              <>
+                <img
+                  src={proofView.url}
+                  alt="Payment proof"
+                  className="max-h-[80vh] rounded-xl object-contain bg-black"
+                />
+                <a
+                  href={proofView.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-blue-400 hover:underline"
+                >
+                  Open in new tab
+                </a>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL (verify / reject payment, record payouts) */}
+      {confirmAction && (() => {
+        const { type, inv, row } = confirmAction;
+        const label = payroll.summary?.period_label || "this period";
+        const configs = {
+          verify: {
+            title: "Verify this payment?",
+            text: `Check the proof for ${inv?.id}, then enter the amount you actually received. If the booking is approved, it will be confirmed.`,
+            yes: "Yes, verify",
+            green: true,
+          },
+          reject: {
+            title: "Reject this payment?",
+            text: `The payment proof for ${inv?.id} will be marked as rejected and the client will be asked to submit a new one.`,
+            yes: "Yes, reject",
+            green: false,
+          },
+          pay: {
+            title: `Pay ${row?.name}?`,
+            text: `This records a payout of ${peso(row?.amount)} for ${row?.events} event(s) in ${label}. StreamSync only records it; the actual transfer is done outside the system.`,
+            yes: "Yes, record payout",
+            green: true,
+          },
+          payall: {
+            title: "Process all pending payouts?",
+            text: `This records ${payroll.summary?.pending_count || 0} payout(s) totaling ${peso(payroll.summary?.pending_amount)} for ${label}. StreamSync only records them; the actual transfers are done outside the system.`,
+            yes: "Yes, record all",
+            green: true,
+          },
+        };
+        const cfg = configs[type];
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-[#111111] border border-neutral-800 rounded-2xl w-full max-w-sm p-6 text-center">
+              <h3 className="text-base font-bold text-white mb-2">{cfg.title}</h3>
+              <p className="text-xs text-neutral-400 mb-4">{cfg.text}</p>
+
+              {type === "verify" && (
+                <div className="mb-4 text-left">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                    Amount received (₱)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={verifyAmount}
+                    onChange={(e) => setVerifyAmount(e.target.value)}
+                    className="w-full bg-[#161616] border border-neutral-800 text-white rounded-lg p-2.5 text-sm focus:outline-none focus:border-green-600"
+                  />
+                  <p className="text-[10px] text-neutral-500 mt-1">
+                    Invoice total {peso(inv?.total)} · balance {peso(inv?.balance)}
+                  </p>
+                </div>
+              )}
+
+              {type === "reject" && (
+                <div className="mb-4 text-left">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                    Reason (sent to the client)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="e.g. The screenshot is blurry or the amount does not match."
+                    className="w-full bg-[#161616] border border-neutral-800 text-white rounded-lg p-2.5 text-sm focus:outline-none focus:border-red-600 resize-none placeholder:text-neutral-600"
+                  />
+                </div>
+              )}
+
+              {confirmError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-950/30 border border-red-900/60 text-red-400 text-xs text-left">
+                  {confirmError}
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleConfirmAction}
+                  disabled={busy}
+                  className={`px-5 py-2.5 rounded-xl text-white text-xs font-bold uppercase tracking-wide transition disabled:opacity-50 ${
+                    cfg.green ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  {busy ? "Saving..." : cfg.yes}
+                </button>
+                <button
+                  onClick={closeConfirm}
+                  disabled={busy}
+                  className="px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:text-white text-xs font-bold uppercase tracking-wide transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

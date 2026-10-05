@@ -287,15 +287,7 @@ const Home = () => {
 
             {/* Right Action Controls */}
             <div className="flex items-center space-x-4 md:space-x-5">
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition p-1.5 cursor-pointer"
-                title="Toggle Theme"
-              >
-                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-              </button>
-
-              {session ? (
+                         {session ? (
                 <>
                   <button
                     onClick={() => navigate("/client/dashboard")}

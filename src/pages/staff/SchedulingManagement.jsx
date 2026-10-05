@@ -10,7 +10,9 @@ import {
   Info,
   CheckCircle2,
   X,
+  QrCode,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../supabaseClient";
 
 const API = import.meta.env.VITE_API_URL;
@@ -92,6 +94,7 @@ const mapAssignment = (r) => ({
   role: (r.role || "").toUpperCase(),
   status: r.status, // "pending" | "acknowledged"
   emergencyDeclared: !!r.emergency_declared,
+  checkedInAt: r.checked_in_at || null,
   date: fmtDate(r.date),
   time: [fmtTime(r.start_time), fmtTime(r.end_time)].filter(Boolean).join(" - "),
   location: r.location,
@@ -117,6 +120,13 @@ const SchedulingManagement = () => {
   const [assignments, setAssignments] = useState([]);
   const [loadingAsg, setLoadingAsg] = useState(true);
   const [asgError, setAsgError] = useState("");
+  const [asgBusyId, setAsgBusyId] = useState(null);
+
+  // Check-in QR modal
+  const [qrAssignment, setQrAssignment] = useState(null);
+  const [qrText, setQrText] = useState("");
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrCopied, setQrCopied] = useState(false);
 
   // Emergency modal state
   const [emergencyModalAssignment, setEmergencyModalAssignment] = useState(null);
@@ -136,7 +146,13 @@ const SchedulingManagement = () => {
           week.map((d) => {
             const r = byDate[d.key];
             return r
-              ? { ...d, morn: !!r.morning, aft: !!r.afternoon, eve: !!r.evening }
+              ? {
+                  ...d,
+                  morn: !!r.morning,
+                  aft: !!r.afternoon,
+                  eve: !!r.evening,
+                  conflict: r.conflict || null,
+                }
               : d;
           })
         );
@@ -151,19 +167,33 @@ const SchedulingManagement = () => {
   }, []);
 
   // Load the staff member's upcoming assignments
+  const loadAssignments = async () => {
+    try {
+      const rows = await authFetch("/staff-portal/assignments");
+      setAssignments(rows.map(mapAssignment));
+    } catch (err) {
+      setAsgError(err.message);
+    } finally {
+      setLoadingAsg(false);
+    }
+  };
+
   useEffect(() => {
-    const loadAssignments = async () => {
-      try {
-        const rows = await authFetch("/staff-portal/assignments");
-        setAssignments(rows.map(mapAssignment));
-      } catch (err) {
-        setAsgError(err.message);
-      } finally {
-        setLoadingAsg(false);
-      }
-    };
     loadAssignments();
   }, []);
+
+  // While the QR is open, poll so it closes as soon as a teammate/admin checks you in
+  useEffect(() => {
+    if (!qrAssignment) return;
+    const timer = setInterval(loadAssignments, 4000);
+    return () => clearInterval(timer);
+  }, [qrAssignment]);
+
+  useEffect(() => {
+    if (qrAssignment && assignments.find((a) => a.id === qrAssignment.id)?.checkedInAt) {
+      setQrAssignment(null);
+    }
+  }, [assignments, qrAssignment]);
 
   // Toggle availability slot
   const toggleSlot = (index, slotKey) => {
@@ -180,7 +210,9 @@ const SchedulingManagement = () => {
       await authFetch("/staff-portal/availability", {
         method: "PUT",
         body: JSON.stringify({
-          days: scheduleDays.map((d) => ({
+          days: scheduleDays
+            .filter((d) => !d.conflict) // locked days keep their saved availability
+            .map((d) => ({
             date: d.key,
             morning: d.morn,
             afternoon: d.aft,
@@ -199,13 +231,43 @@ const SchedulingManagement = () => {
 
   const handleAcknowledge = async (id) => {
     setAsgError("");
+    setAsgBusyId(id);
     try {
-      await authFetch(`/staff-portal/assignments/${id}/acknowledge`, { method: "PATCH" });
+      await authFetch(`/staff-portal/assignments/${id}/acknowledge`, { method: "POST" });
       setAssignments((prev) =>
         prev.map((item) => (item.id === id ? { ...item, status: "acknowledged" } : item))
       );
     } catch (err) {
       setAsgError(err.message);
+    } finally {
+      setAsgBusyId(null);
+    }
+  };
+
+  // Open the check-in QR (the backend signs it)
+  const openQr = async (asg) => {
+    setQrAssignment(asg);
+    setQrText("");
+    setQrCopied(false);
+    setQrLoading(true);
+    try {
+      const data = await authFetch(`/staff-portal/assignments/${asg.id}/qr`);
+      setQrText(data.text || data.token);
+    } catch (err) {
+      setAsgError(err.message);
+      setQrAssignment(null);
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  const copyQrText = async () => {
+    try {
+      await navigator.clipboard.writeText(qrText);
+      setQrCopied(true);
+      setTimeout(() => setQrCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
     }
   };
 
@@ -527,36 +589,115 @@ const SchedulingManagement = () => {
                     </div>
                   </div>
 
-                  {/* Action button */}
+                  {/* Action buttons */}
                   {asg.status === "pending" ? (
                     <button
                       type="button"
                       onClick={() => handleAcknowledge(asg.id)}
-                      className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest transition cursor-pointer shadow-lg shadow-red-950/40"
+                      disabled={asgBusyId === asg.id}
+                      className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest transition cursor-pointer shadow-lg shadow-red-950/40 disabled:opacity-50"
                     >
-                      Acknowledge Assignment
+                      {asgBusyId === asg.id ? "Saving..." : "Acknowledge Assignment"}
                     </button>
                   ) : (
-                    <button
-                      type="button"
-                      disabled={asg.emergencyDeclared}
-                      onClick={() => setEmergencyModalAssignment(asg)}
-                      className={`w-full py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 ${
-                        asg.emergencyDeclared
-                          ? "bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed"
-                          : "bg-[#211612] hover:bg-[#2d1e18] text-orange-500 border border-orange-700/40"
-                      }`}
-                    >
-                      <AlertTriangle size={14} />
-                      <span>
-                        {asg.emergencyDeclared
-                          ? "Emergency Reported (Backup Alerted)"
-                          : "Declare Emergency"}
-                      </span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {asg.checkedInAt ? (
+                        <div className="flex-1 py-3.5 rounded-xl bg-[#0b2419] border border-[#14532d] text-emerald-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                          <CheckCircle2 size={14} />
+                          <span>
+                            Checked in{" "}
+                            {new Date(asg.checkedInAt).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        !asg.emergencyDeclared && (
+                          <button
+                            type="button"
+                            onClick={() => openQr(asg)}
+                            className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest transition cursor-pointer shadow-lg shadow-red-950/40 flex items-center justify-center gap-2"
+                          >
+                            <QrCode size={14} />
+                            <span>Show Check-in QR</span>
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={asg.emergencyDeclared || !!asg.checkedInAt}
+                        onClick={() => setEmergencyModalAssignment(asg)}
+                        className={`flex-1 py-3.5 rounded-xl text-xs font-bold uppercase tracking-widest transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 ${
+                          asg.emergencyDeclared
+                            ? "bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed"
+                            : "bg-[#211612] hover:bg-[#2d1e18] text-orange-500 border border-orange-700/40"
+                        }`}
+                      >
+                        <AlertTriangle size={14} />
+                        <span>
+                          {asg.emergencyDeclared
+                            ? "Emergency Reported (Backup Alerted)"
+                            : "Declare Emergency"}
+                        </span>
+                      </button>
+                    </div>
                   )}
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Check-in QR modal */}
+      {qrAssignment && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white text-center">
+            <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
+              <div className="flex items-center gap-2 text-red-500 font-black text-sm uppercase">
+                <QrCode size={18} />
+                <span>Check-in QR</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQrAssignment(null)}
+                className="text-neutral-500 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-xs text-neutral-300">
+              <strong className="text-white">{qrAssignment.title}</strong>
+              <br />
+              {qrAssignment.date}
+            </p>
+
+            {qrLoading && (
+              <p className="text-xs text-neutral-400 py-10">Generating your QR code...</p>
+            )}
+
+            {!qrLoading && qrText && (
+              <div className="bg-white p-4 rounded-xl inline-block">
+                <QRCodeSVG value={qrText} size={240} level="M" />
+              </div>
+            )}
+
+            <p className="text-[11px] text-neutral-500 leading-relaxed">
+              Show this to your team lead or the admin when you arrive. It only works on the event
+              day. This screen closes by itself once you are checked in.
+            </p>
+
+            {qrText && (
+              <button
+                type="button"
+                onClick={copyQrText}
+                className="px-4 py-2 rounded-xl border border-[#1b212f] text-neutral-300 hover:text-white text-[11px] font-bold uppercase tracking-wider transition cursor-pointer"
+              >
+                {qrCopied ? "Copied!" : "Copy code text"}
+              </button>
             )}
           </div>
         </div>

@@ -96,15 +96,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="flex items-center gap-6">
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className="text-neutral-400 hover:text-white transition cursor-pointer"
-            title="Toggle theme"
-          >
-            {isDarkMode ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
-
-          {/* Admin Info Pill */}
+                 {/* Admin Info Pill */}
           <div className="text-right">
             <p className="text-xs font-bold leading-tight text-white capitalize">
               {adminData.fullName}
