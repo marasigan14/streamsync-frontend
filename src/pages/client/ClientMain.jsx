@@ -160,6 +160,7 @@ import ajakipro from "../../assets/livestream/ajakipro.jpg"
 import projector from "../../assets/projector/projector.jpg"
 import projectorStand from "../../assets/projector/projectorStand.jpg"
 import projectorBracket75 from "../../assets/projector/bracket75.jpg"
+import projectorBracket58 from "../../assets/projector/bracket85.jpg"
 import projectorBracket912 from "../../assets/projector/bracket912.jpg"
 import projectorScreen75 from "../../assets/projector/7x5 projector.jpg"
 import projectorScreen912 from "../../assets/projector/9x12 projector stand and screen.jpg"
@@ -467,17 +468,91 @@ const ClientMain = () => {
     title: "PROJECTOR RENTAL",
     subtitle: "Complete projection solutions for presentations, seminars, and corporate events.",
     items: [
-      { name: "Epson 2255u 5k Lumnes Projector", desc: "High-lumen Epson projector delivering sharp WUXGA full HD images even in well-lit conference and event halls.", price: "₱3,500/day", image: projector },
-      { name: "Projector Stands", desc: "Adjustable heavy-duty tripod stands for optimal projector elevation and projection angle alignment.", price: "₱500/day", image: projectorStand },
-      { name: "Projector 7.5 x 10 Bracket", desc: "Heavy-duty structural mounting bracket and hardware designed for secure 7.5x10 ft screen truss hanging.", price: "₱800/day", image: projectorBracket75 },
-      { name: "Projector 9 x 12 Bracket", desc: "Reinforced stage mounting bracket kit for securing large 9x12 ft fast-fold projection frames.", price: "₱1,000/day", image: projectorBracket912 },
-      { name: "Projector Screen 7.5 x 10", desc: "Matte white professional fast-fold projection screen providing high-contrast, uniform visuals for medium audiences.", price: "₱1,500/day", image: projectorScreen75 },
-      { name: "Projector Screen 9 x 12", desc: "Large-format fast-fold stage projection screen engineered for plenary halls, conventions, and ballrooms.", price: "₱2,200/day", image: projectorScreen912 },
-      { name: "Laptop", desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.", price: "₱2,000/day", image: laptop },
-      { name: "Mini Folding Table", desc: "Compact, durable folding table for staging technical laptops, clicker bases, and projector controllers.", price: "₱300/day", image: foldingTable },
-      { name: "Extension Cord", desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.", price: "₱200/day", image: extensionCord1 },
-      { name: "Prestar Push Cart", desc: "Heavy-duty silenced platform trolley for safe and swift transport of sensitive AV cases and equipment on site.", price: "₱400/day", image: pushCart },
-    ]
+  {
+    id: "epson-2255u",
+    name: "Epson 2255u 5k Lumens Projector",
+    desc: "High-lumen Epson projector delivering sharp WUXGA full HD images even in well-lit conference and event halls.",
+    price: "₱3,500/day",
+    image: projector,
+  },
+  {
+    id: "projector-stands",
+    name: "Projector Stands",
+    desc: "Adjustable heavy-duty tripod stands for optimal projector elevation and projection angle alignment.",
+    price: "₱500/day",
+    image: projectorStand,
+  },
+  {
+    id: "projector-bracket-75-10",
+    name: "Projector 7.5 x 10 Bracket",
+    desc: "Heavy-duty structural mounting bracket and hardware designed for secure 7.5x10 ft screen truss hanging.",
+    price: "₱800/day",
+    image: projectorBracket75,
+  },
+  {
+    id: "projector-bracket-9-12",
+    name: "Projector 9 x 12 Bracket",
+    desc: "Reinforced stage mounting bracket kit for securing large 9x12 ft fast-fold projection frames.",
+    price: "₱1,000/day",
+    image: projectorBracket912,
+  },
+  {
+    id: "projector-screen-bracket-5-8",
+    name: "Projector 5 x 8 Screen and Bracket",
+    desc: "Compact matte white professional projection screen and mounting kit suitable for breakout rooms and small venues.",
+    price: "₱1,500/day",
+    image: projectorBracket58,
+  },
+  {
+    id: "projector-screen-75-10",
+    name: "Projector Screen 7.5 x 10",
+    desc: "Matte white professional fast-fold projection screen providing high-contrast, uniform visuals for medium audiences.",
+    price: "₱1,500/day",
+    image: projectorScreen75,
+  },
+  {
+    id: "projector-screen-9-12",
+    name: "Projector Screen 9 x 12",
+    desc: "Large-format fast-fold stage projection screen engineered for plenary halls, conventions, and ballrooms.",
+    price: "₱2,200/day",
+    image: projectorScreen912,
+  },
+  {
+    id: "laptop",
+    name: "Laptop",
+    desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.",
+    price: "₱2,000/day",
+    image: laptop,
+  },
+  {
+    id: "Hollyland Cosmo C1 Wireless Video Transmission System",
+    name: "Hollyland Cosmo C1 Wireless Video Transmission System",
+    desc: "Zero-latency wireless video transmitter and receiver set delivering uncompressed 1080p60 over 1,000 ft.",
+    price: "₱2,200/day",
+    image: hollylandCosmoc1Wireless,
+  },
+  {
+    id: "mini-folding-table",
+    name: "Mini Folding Table",
+    desc: "Compact, durable folding table for staging technical laptops, clicker bases, and projector controllers.",
+    price: "₱300/day",
+    image: foldingTable,
+  },
+  {
+    id: "extension-cord",
+    name: "Extension Cord",
+    desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.",
+    price: "₱200/day",
+    image: extensionCord1,
+  },
+  {
+    id: "prestar-push-cart",
+    name: "Prestar Push Cart",
+    desc: "Heavy-duty silenced platform trolley for safe and swift transport of sensitive AV cases and equipment on site.",
+    price: "₱400/day",
+    image: pushCart,
+  },
+]
   },
   lights: {
     title: "LIGHTS & SOUNDS",
