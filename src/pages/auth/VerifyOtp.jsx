@@ -3,29 +3,28 @@ import { Phone, ArrowLeft, RotateCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import heroImage from '../../assets/hero.png';
 
-const API = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-// Calls the FastAPI OTP endpoints (/otp/send, /otp/verify)
-const callOtp = async (path, body) => {
-  const res = await fetch(`${API}/otp/${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(
-      typeof data.detail === 'string' ? data.detail : 'Request failed. Please try again.'
-    );
+// Calls the FastAPI OTP endpoints and returns { ok, data } with FastAPI's error text in data.detail.
+async function postOtp(path, body) {
+  try {
+    const res = await fetch(`${API_URL}/otp/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  } catch {
+    return { ok: false, data: { detail: 'Cannot reach the server. Is the backend running?' } };
   }
-  return data;
-};
+}
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Email and phone passed from the Register page
+  
+  // Retrieve email AND phone passed from the Register page
   const email = location.state?.email || '';
   const phone = location.state?.phone || '';
 
@@ -36,11 +35,6 @@ const VerifyOtp = () => {
   const [resending, setResending] = useState(false);
 
   const inputRefs = useRef([]);
-
-  // If the page was opened/refreshed without a phone, go back to registration
-  useEffect(() => {
-    if (!phone) navigate('/register', { replace: true });
-  }, [phone, navigate]);
 
   useEffect(() => {
     if (timeLeft <= 0) return;
@@ -76,15 +70,17 @@ const VerifyOtp = () => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').trim();
     if (/^\d{6}$/.test(pastedData)) {
-      setOtp(pastedData.split(''));
+      const digits = pastedData.split('');
+      setOtp(digits);
       inputRefs.current[5]?.focus();
     }
   };
 
+  // Verify OTP using the mock-supported Edge Function
   const handleVerify = async (e) => {
     e.preventDefault();
     const token = otp.join('');
-
+    
     if (token.length < 6) {
       setErrorMessage('Please enter all 6 digits.');
       return;
@@ -93,28 +89,31 @@ const VerifyOtp = () => {
     setLoading(true);
     setErrorMessage('');
 
-    try {
-      await callOtp('verify', { phone, code: token });
-      navigate('/verify-email', { state: { email } });
-    } catch (err) {
-      setErrorMessage(err.message);
+    // Call the updated backend function to verify the SMS code and clean up database table
+    const { ok, data } = await postOtp('verify', { phone: phone, code: token });
+
+    if (!ok) {
+      setErrorMessage(data?.detail || 'Invalid or expired code.');
       setLoading(false);
+    } else {
+      // Verification successful -> Direct to login or success notice
+      navigate('/verify-email', { state: { email: email } });
     }
   };
 
+  // Resend OTP handler via Edge Function
   const handleResend = async () => {
-    if (resending) return;
+    if (resending) return; 
     setResending(true);
     setErrorMessage('');
 
-    try {
-      await callOtp('send', { phone });
+    const { ok, data } = await postOtp('send', { phone: phone });
+
+    if (!ok) {
+      setErrorMessage(data?.detail || 'Failed to resend OTP.');
+    } else {
       setTimeLeft(5 * 60);
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
       alert('A new verification code has been sent to your phone!');
-    } catch (err) {
-      setErrorMessage(err.message);
     }
     setResending(false);
   };
@@ -122,9 +121,9 @@ const VerifyOtp = () => {
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
       {/* --- LEFT SIDE: Branding --- */}
-      <div
+      <div 
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroImage})` }}
+        style={{ backgroundImage: `url(${heroImage})` }} 
       >
         <div className="absolute inset-0 bg-black/70"></div>
         <div className="absolute bottom-12 left-12 z-10">
@@ -141,7 +140,8 @@ const VerifyOtp = () => {
       {/* --- RIGHT SIDE: OTP Verification Card --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 relative">
         <div className="w-full max-w-md bg-[#121212] p-8 md:p-10 rounded-3xl border border-neutral-800 shadow-2xl">
-          <button
+          
+          <button 
             onClick={() => navigate('/register')}
             className="flex items-center text-xs text-neutral-400 hover:text-white transition-colors mb-6"
           >
@@ -181,10 +181,8 @@ const VerifyOtp = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs text-neutral-400">
-              <span>
-                Time remaining: <strong className="text-neutral-200">{formatTime(timeLeft)}</strong>
-              </span>
-              <button
+              <span>Time remaining: <strong className="text-neutral-200">{formatTime(timeLeft)}</strong></span>
+              <button 
                 type="button"
                 onClick={handleResend}
                 disabled={resending}

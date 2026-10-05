@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 // Change these lines:
 import { supabase } from "../supabaseClient";
+import ContactForm from "../components/ContactForm";
 import logoImage from "../assets/livestream-logo.png";
 import heroCollage from "../assets/hero-collage.jpg";
 import leader1 from "../assets/profile.jpg";
@@ -287,7 +288,7 @@ const Home = () => {
 
             {/* Right Action Controls */}
             <div className="flex items-center space-x-4 md:space-x-5">
-                         {session ? (
+              {session ? (
                 <>
                   <button
                     onClick={() => navigate("/client/dashboard")}
@@ -1408,12 +1409,12 @@ const Home = () => {
                   {
                     icon: Phone,
                     title: "PHONE",
-                    lines: ["09936742673", "09171234567"],
+                    lines: ["09655783971"],
                   },
                   {
                     icon: Mail,
                     title: "EMAIL",
-                    lines: ["lsmevents@gmail.com", "info@livestreammanila.com"],
+                    lines: ["deiriogeneth@gmail.com", "info@livestreammanila.com"],
                   },
                   {
                     icon: Clock,
@@ -1474,91 +1475,7 @@ const Home = () => {
 
                   <div className="h-px bg-[#283247] mb-6"></div>
 
-                  <form
-                    className="space-y-4"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                    }}
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Juan"
-                          className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Dela Cruz"
-                          className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="juan@example.com"
-                          className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                          Phone Number
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="+63 912 345 6789"
-                          className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                        Event Type
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Corporate Conference, Concert, Wedding"
-                        className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                        Message
-                      </label>
-                      <textarea
-                        rows={4}
-                        placeholder="Tell us about your event..."
-                        className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200 resize-none"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="group/btn w-full bg-[#ff0000] hover:bg-red-700 text-white font-extrabold uppercase tracking-[0.12em] text-xs py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-950/30 hover:shadow-red-700/40 hover:-translate-y-0.5"
-                    >
-                      <span>Send Message</span>
-                      <Send
-                        size={15}
-                        className="transition-transform duration-200 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-0.5"
-                      />
-                    </button>
-                  </form>
+                  <ContactForm />
                 </div>
               </div>
             </div>
@@ -2026,8 +1943,8 @@ const Home = () => {
                   <p>
                     444 Sta Felica St. San Antonio Homes Culiat Quezon City 1128
                   </p>
-                  <p>09936742673</p>
-                  <p>lsmevents@gmail.com</p>
+                  <p>09655783971</p>
+                  <p>deiriogeneth@gmail.com</p>
                 </div>
               </div>
             </div>

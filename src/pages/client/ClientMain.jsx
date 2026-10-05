@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
+import ContactForm from "../../components/ContactForm";
 import logoImage from "../../assets/livestream-logo.png";
 import heroCollage from "../../assets/hero-collage.jpg";
 import leader1 from "../../assets/carlo.jpg";
@@ -49,57 +50,180 @@ import equipCtaBg from "../../assets/banner2.jpg";
 import eventIlhoon from "../../assets/past1.jpg";
 import eventCorporate from "../../assets/testpicture.jpg";
 import eventCooperative from "../../assets/past3.jpg";
-import eventEsports from "../../assets/testpicture.jpg";
-import eventFundraiser from "../../assets/testpicture.jpg";
-import eventConcert from "../../assets/testpicture.jpg";
+import eventEsports from "../../assets/events/relx.jpg";
+import eventConvention from "../../assets/events/korean.jpg";
+import eventLandlite from "../../assets/events/landlite.jpg";
+import eventGlobe from "../../assets/events/globe.jpg";
 import eventsCtaBg from "../../assets/banner3.jpg";
 import techsummit from "../../assets/events/techsummit.jpg"
 
+// Displays
 import tvImage from "../../assets/livestream/tvImage.jpg"
-import lsCameras from "../../assets/livestream/cameras.jpg"
+import tvImage2 from "../../assets/livestream/tvImage2.jpg"
+import monitorImage from "../../assets/livestream/samsung22.jpg"
+import monitorImage2 from "../../assets/livestream/asus24.jpg"
+import monitorImage3 from "../../assets/livestream/dell24.jpg"
+import monitorImage4 from "../../assets/livestream/dell27.jpg"
+
+// Cameras & Capture
+import lsCameras from "../../assets/livestream/camera-sony-pxw-z90.jpg"
 import obsbot from "../../assets/livestream/obsbot.jpg"
-import tricastervp from "../../assets/livestream/tricaster1.jpg"
-import tricastercontroller from "../../assets/livestream/tricaster2.jpg"
-import switcher from "../../assets/livestream/testpicture.jpg"
-import recorder from "../../assets/livestream/testpicture.jpg"
-import commset from "../../assets/livestream/testpicture.jpg"
-import monitors from "../../assets/livestream/testpicture.jpg"
-import streambag from "../../assets/livestream/testpicture.jpg"
-import audiobag from "../../assets/livestream/testpicture.jpg"
-import cameraStand from "../../assets/livestream/testpicture.jpg"
-import ups from "../../assets/livestream/testpicture.jpg"
 
-import projector from "../../assets/projector/testpicture.jpg"
-import projectorStand from "../../assets/projector/testpicture.jpg"
-import projectorScreen from "../../assets/projector/testpicture.jpg"
-import laptop from "../../assets/projector/testpicture.jpg"
-import foldingTable from "../../assets/projector/testpicture.jpg"
-import extensionCord1 from "../../assets/projector/testpicture.jpg"
-import projectorBox from "../../assets/projector/testpicture.jpg"
+// Switchers & Control
+import tricaster1 from "../../assets/livestream/tricaster1.jpg"
+import tricaster2 from "../../assets/livestream/tricaster2.jpg"
+import switcher1 from "../../assets/livestream/bmd1.jpg"
+import switcher2 from "../../assets/livestream/bmd2.jpg"
+import switcher3 from "../../assets/livestream/roland.jpg"
+import roland from "../../assets/livestream/roland.jpg"
+import streamdeck from "../../assets/livestream/streamdeck.jpg"
+import testpicture1 from "../../assets/livestream/testpicture.jpg"
 
-import micRack from "../../assets/lightsSounds/testpicture.jpg"
-import handheldMic from "../../assets/lightsSounds/testpicture.jpg"
-import audioMixer from "../../assets/lightsSounds/testpicture.jpg"
-import djController from "../../assets/lightsSounds/testpicture.jpg"
-import djStand from "../../assets/lightsSounds/testpicture.jpg"
-import qscSpeakers from "../../assets/lightsSounds/testpicture.jpg"
-import subWoofer from "../../assets/lightsSounds/testpicture.jpg"
-import speakerStand from "../../assets/lightsSounds/testpicture.jpg"
-import micStand from "../../assets/lightsSounds/testpicture.jpg"
-import lightStand from "../../assets/lightsSounds/testpicture.jpg"
-import lyricsStand from "../../assets/lightsSounds/testpicture.jpg"
-import tigerTouch from "../../assets/lightsSounds/testpicture.jpg"
-import ledBar from "../../assets/lightsSounds/testpicture.jpg"
-import ledPar from "../../assets/lightsSounds/testpicture.jpg"
-import headwornMic from "../../assets/lightsSounds/testpicture.jpg"
-import dmxController from "../../assets/lightsSounds/testpicture.jpg"
-import xlrCable from "../../assets/lightsSounds/testpicture.jpg"
-import hdmiCable from "../../assets/lightsSounds/testpicture.jpg"
-import powerCable from "../../assets/lightsSounds/testpicture.jpg"
-import snakeCable from "../../assets/lightsSounds/testpicture.jpg"
-import lanCable from "../../assets/lightsSounds/testpicture.jpg"
-import extensionCord2 from "../../assets/lightsSounds/testpicture.jpg"
-import dmxCables from "../../assets/lightsSounds/testpicture.jpg"
+// Audio & Comms
+import commsets from "../../assets/livestream/commsets.jpg"
+import focusrite from "../../assets/livestream/focusrite.jpg"
+
+// Wireless & Clickers
+import hollylandCosmoc1Wireless from "../../assets/livestream/hollyland-cosmoc1-wireless.jpg"
+import accsoonCineview from "../../assets/livestream/accsoon-cineview.jpg"
+import clickerPerfectCue from "../../assets/livestream/clicker-perfectcue.jpg"
+import logitechClicker from "../../assets/livestream/logitech-clicker.jpg"
+
+// Support & Stabilizers
+import manfrottoTripod from "../../assets/livestream/manfrotto-tripod.jpg"
+import manfrottoLightstand from "../../assets/livestream/manfrotto-lightstand.jpg"
+import manfrottoPixieTripod from "../../assets/livestream/manfrotto-pixie-tripod.jpg"
+import gimbalStabilizerDjiRs5 from "../../assets/livestream/gimbal-stabilizer-dji-rs-5.jpg"
+
+// Power
+import ups from "../../assets/livestream/ups.jpg"
+import ups750 from "../../assets/livestream/ups-750.jpg"
+import npfbattery from "../../assets/livestream/npfbattery.jpg"
+import smallrigNpf970Charger from "../../assets/livestream/smallrig-npf970-charger.jpg"
+import anker20kmahPowerbank from "../../assets/livestream/anker-20kmah-powerbank.jpg"
+
+// Cables & Connectivity
+import vention100m from "../../assets/livestream/vention100m.jpg"
+import cableMiniUSB from "../../assets/livestream/cable-miniUSB.jpg"
+import cableMicroUSB from "../../assets/livestream/cable-microUSB.jpg"
+import cableTypeB from "../../assets/livestream/cable-typeB.jpg"
+import cableTypeC from "../../assets/livestream/cable-typeC.jpg"
+import cableMatters from "../../assets/livestream/cableMatters.jpg"
+import hdmi1m from "../../assets/livestream/hdmi-1m.jpg"
+import hdmi3m from "../../assets/livestream/hdmi-3m.jpg"
+import hdmi15m from "../../assets/livestream/hdmi-15m.jpg"
+import hdmi20m from "../../assets/livestream/hdmi-20m.jpg"
+import sdicableShortie from "../../assets/livestream/sdicable-shortie.jpg"
+import sdicable5m from "../../assets/livestream/sdicable-5m.jpg"
+import sdicable10m from "../../assets/livestream/sdicable-10m.jpg"
+import lancable3m from "../../assets/livestream/lancable-3m.jpg"
+import lancable5m from "../../assets/livestream/lancable-5m.jpg"
+import lancable20m from "../../assets/livestream/lancable-20m.jpg"
+import lancable50m from "../../assets/livestream/lancable-50m.jpg"
+import lancable75m from "../../assets/livestream/lancable-75m.jpg"
+
+// Converters, Splitters & Capture Cards
+import wyrestorm from "../../assets/livestream/wyrestorm.jpg"
+import decimator from "../../assets/livestream/decimator.jpg"
+import birddog from "../../assets/livestream/birddog.jpg"
+import jtech from "../../assets/livestream/jtech.jpg"
+import splitterHdmi1x4 from "../../assets/livestream/splitter-hdmi1x4.jpg"
+import splitterAten1x8 from "../../assets/livestream/splitter-aten1x8.jpg"
+import converterSdiHdmi from "../../assets/livestream/converter-sdi-hdmi.jpg"
+import converterHdmiSdi from "../../assets/livestream/converter-hdmi-sdi.jpg"
+import converterBiDirectional from "../../assets/livestream/converter-bi-directional.jpg"
+import converterSdiHdmi4k from "../../assets/livestream/converter-sdi-hdmi-4k.jpg"
+import lumantekEzMdPlus from "../../assets/livestream/Lumantek eZ-MD+.jpg"
+import magewellCapturecard from "../../assets/livestream/magewell-capturecard.jpg"
+import magewellCaptureGen2 from "../../assets/livestream/magewell-capture-gen2.jpg"
+import decklink8kProG2Sm from "../../assets/livestream/decklink-8k-pro-g2-sm.jpg"
+import bmdDecklinkDuo from "../../assets/livestream/bmd-decklink-duo.jpg"
+import zoomh6 from "../../assets/livestream/zoomh6.jpg"
+import ankerPowerport from "../../assets/livestream/anker-powerport.jpg"
+
+// IT & Storage
+import ssdSamsung from "../../assets/livestream/ssd-samsung.jpg"
+import ugreenMulticardReaders from "../../assets/livestream/ugreen-multicard-readers.jpg"
+import ugreenUsbexpansion from "../../assets/livestream/ugreen-usbexpansion.jpg"
+import laptopAsusZephyus from "../../assets/livestream/laptop-asus-zephyus.jpg"
+import laptopAsusRogstrix from "../../assets/livestream/laptop-asus-rogstrix.jpg"
+import laptopAsusTufF15 from "../../assets/livestream/laptop-asus-tuf-f15.jpg"
+import suncomm5gRouter from "../../assets/livestream/suncomm-5g-router.jpg"
+import asusGamingRouter from "../../assets/livestream/asus-gaming-router.jpg"
+import tplinkCpe710 from "../../assets/livestream/tplink-cpe710.jpg"
+import mikrotikRouter from "../../assets/livestream/mikrotik-router.jpg"
+
+// Media
+import ajapakmedia from "../../assets/livestream/ajapakmedia.jpg"
+import ajakipro from "../../assets/livestream/ajakipro.jpg"
+
+import projector from "../../assets/projector/projector.jpg"
+import projectorStand from "../../assets/projector/projectorStand.jpg"
+import projectorBracket75 from "../../assets/projector/bracket75.jpg"
+import projectorBracket58 from "../../assets/projector/bracket85.jpg"
+import projectorBracket912 from "../../assets/projector/bracket912.jpg"
+import projectorScreen75 from "../../assets/projector/7x5 projector.jpg"
+import projectorScreen912 from "../../assets/projector/9x12 projector stand and screen.jpg"
+import laptop from "../../assets/projector/laptop-asus-tuf-f15.jpg"
+import foldingTable from "../../assets/projector/lifetime mini table.jpg"
+import extensionCord1 from "../../assets/projector/extension-omni15m.jpg"
+import pushCart from "../../assets/projector/pushcart-prestar.jpg"
+
+
+// Racks, Stands & Accessories
+import testpicture from "../../assets/lightsSounds/testpicture.jpg"
+import herculesDjStand from "../../assets/lightsSounds/hercules-djstand.jpg"
+import herculesMicStand from "../../assets/lightsSounds/hercules-micstand.jpg"
+import herculesLyricStand from "../../assets/lightsSounds/hercules-lyricstand.jpg"
+import herculesSpeakerStand from "../../assets/lightsSounds/hercules-speakerstand.jpg"
+import herculesLightStand from "../../assets/lightsSounds/hercules-ls700b-lightstand.jpg"
+import rodePsa1 from "../../assets/lightsSounds/rode-psa1plus+studioarm.jpg"
+import drumThrone from "../../assets/lightsSounds/drum throne.jpg"
+
+// Audio Mixers & Interfaces
+import yamahaDm3 from "../../assets/lightsSounds/dm3.jpg"
+import ddjFlx4 from "../../assets/lightsSounds/ddj-flx4.jpg"
+import whirlwindPcdi from "../../assets/lightsSounds/whirlwind-pcDI-box.jpg"
+import radialProD2 from "../../assets/lightsSounds/radial-pro-d2.jpg"
+
+// Microphones & Antennas
+import slxD from "../../assets/lightsSounds/slx-d.jpg"
+import shureUlxd2 from "../../assets/lightsSounds/shure-ulxd2.jpg"
+import shureUlxd1 from "../../assets/lightsSounds/shure-ulxd1.jpg"
+import rodeNtg3 from "../../assets/lightsSounds/rode-ntg-3.jpg"
+import tmAm1Boom from "../../assets/lightsSounds/tm-am1-boom.jpg"
+import rodeBlimp from "../../assets/lightsSounds/rode-blimp.jpg"
+import shureBattery from "../../assets/lightsSounds/shure-battery.jpg"
+import shureDualDock from "../../assets/lightsSounds/shure-dualdock-charger.jpg"
+import shureUa874 from "../../assets/lightsSounds/shure-ua874-antenna.jpg"
+import shureAntennaDist from "../../assets/lightsSounds/shure-antenna-distribution.jpg"
+import senn835 from "../../assets/lightsSounds/sennheiser-e835.jpg"
+import sennG4 from "../../assets/lightsSounds/sennheiser-g4lapel.jpg"
+import bphs1 from "../../assets/lightsSounds/bphs1.jpg"
+import steinberg from "../../assets/lightsSounds/steinberg-ur44.jpg"
+
+// Speakers
+import qscSpeakers from "../../assets/lightsSounds/speakers-qsc-k12.2.jpg"
+import qscSub from "../../assets/lightsSounds/speaker-qsc-ks118-subwoofer.jpg"
+
+// Lighting & FX
+import tigerTouch2 from "../../assets/lightsSounds/tigertouch2.jpg"
+import dmx384 from "../../assets/lightsSounds/dmx-384b-lightcontroller.jpg"
+import ledBarLsl16 from "../../assets/lightsSounds/ledbar-lsl-16.jpg"
+import ledPar from "../../assets/lightsSounds/ledpar.jpg"
+import movingHeads from "../../assets/lightsSounds/movingheads-lbl295.jpg"
+import hazeMachine from "../../assets/lightsSounds/haze-machine-jojen.jpg"
+
+// Cables
+import xlrCable3m from "../../assets/lightsSounds/xlrcable-3m.jpg"
+import xlrCable20m from "../../assets/lightsSounds/xlrcable-20m.jpg"
+import snakeCable from "../../assets/lightsSounds/hosa-stagebox-snakecable.jpg"
+import dmxCable3m from "../../assets/lightsSounds/dmxcable-3m.jpg"
+import dmxCable10m from "../../assets/lightsSounds/dmxcable-10m.jpg"
+import ventionFiber from "../../assets/lightsSounds/vention-fiberopticcable-100m.jpg"
+
+import omni10gang from "../../assets/lightsSounds/omni10gang.jpg"
+import omni15m from "../../assets/lightsSounds/omni15m.jpg"
 
 const ClientMain = () => {
   const navigate = useNavigate();
@@ -117,6 +241,8 @@ const ClientMain = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 8, 1));
   const [activeCategoryModal, setActiveCategoryModal] = useState(null);
   const [cart, setCart] = useState([]);
+  const [expandedDesc, setExpandedDesc] = useState({});
+  const [previewImage, setPreviewImage] = useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -200,68 +326,241 @@ const ClientMain = () => {
   };
 
   const equipmentCatalogs = {
-    livestream: {
-      title: "LIVESTREAM RENTAL",
-      subtitle: "Full broadcast-grade production equipment for live streaming events of any scale.",
-      items: [
-        { name: "Televisions", desc: "Large-format displays for audience viewing, stage confidence, and production monitoring at events.", price: "₱2,500/day", image: tvImage },
-        { name: "Cameras", desc: "Professional broadcast-grade cameras delivering crisp, high-definition footage for livestream events.", price: "₱2,500/day", image: lsCameras },
-        { name: "Obsbot Camera", desc: "AI-powered robotic camera with auto-tracking for hands-free speaker and presenter coverage.", price: "₱2,500/day", image: obsbot },
-        { name: "TriCaster Video Production System", desc: "Industry-leading all-in-one live production system - switching, streaming, recording, and graphics in one unit.", price: "₱15,000/day", image: tricastervp },
-        { name: "TriCaster Controller", desc: "Dedicated hardware control surface for the TriCaster system, enabling fast and precise live switching.", price: "₱5,000/day", image: tricastercontroller },
-        { name: "Switcher", desc: "Multi-input video switcher for seamless camera cuts, transitions, and live production control.", price: "₱4,000/day", image: switcher },
-        { name: "Recorder", desc: "High-quality video recorder for capturing the full broadcast output as a master archive file.", price: "₱2,000/day", image: recorder },
-        { name: "Communication Sets", desc: "Intercom headsets and belt packs for seamless crew communication throughout the production.", price: "₱500/day", image: commset },
-        { name: "Monitors", desc: "Color-accurate production monitors for camera operators and the director to review the live feed.", price: "₱1,500/day", image: monitors },
-        { name: "Stream Bag", desc: "Organized carry bag housing the complete mobile streaming kit for rapid deployment at any venue.", price: "₱600/day", image: streambag },
-        { name: "Audio Bag", desc: "Protective bag for audio gear - wireless receivers, microphones, and accessories neatly organized.", price: "₱300/day", image: audiobag },
-        { name: "Camera Stand / Tripod", desc: "Heavy-duty fluid head tripods and stands for stable, smooth camera movements during live events.", price: "₱800/day", image: cameraStand },
-        { name: "UPS", desc: "Uninterruptible Power Supply units providing backup power to protect critical equipment during outages.", price: "₱1,500/day", image: ups },
-      ]
-    },
-    projector: {
-      title: "PROJECTOR RENTAL",
-      subtitle: "Complete projection solutions for presentations, seminars, and corporate events.",
-      items: [
-        { name: "Epson Projectors", desc: "High-lumen Epson projectors delivering sharp, vivid images even in well-lit conference and event halls.", price: "₱3,500/day", image: projector },
-        { name: "Projector Stands", desc: "Adjustable heavy-duty stands for optimal projector placement and angle in any venue layout.", price: "₱500/day", image: projectorStand },
-        { name: "Projector Screen", desc: "Matte white projection screens in various sizes for crisp, uniform image display at events.", price: "₱1,500/day", image: projectorScreen },
-        { name: "Laptop", desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.", price: "₱2,000/day", image: laptop },
-        { name: "Mini Folding Table", desc: "Compact folding tables for positioning the projector and laptop at the correct throw distance.", price: "₱300/day", image: foldingTable },
-        { name: "Extension Cord", desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.", price: "₱200/day", image: extensionCord1 },
-        { name: "Projector Box / Case", desc: "Foam-padded hard cases for safe transport and storage of projectors during deployment.", price: "Included", image: projectorBox },
-      ]
-    },
-    lights: {
-      title: "LIGHTS & SOUNDS",
-      subtitle: "Professional audio and dynamic lighting rigs that transform any venue into a stage-ready environment.",
-      items: [
-        { name: "Mic Rack", desc: "Organized rack for storing microphones and audio processors during transport and stage setup.", price: "₱100/day", image: micRack },
-        { name: "Handheld Microphones", desc: "Reliable wireless and wired handheld microphones for presenters, performers, and public speakers.", price: "₱300/day", image: handheldMic },
-        { name: "DM3 Audio Mixer", desc: "Advanced multi-channel digital mixing console offering professional multichannel audio control for live events.", price: "₱2,500/day", image: audioMixer },
-        { name: "DJ Controller", desc: "Full-featured digital DJ controller for precise mixing, transitions, and music playback at events.", price: "₱3,000/day", image: djController },
-        { name: "DJ Stand", desc: "Adjustable sturdy stand for professional DJ consoles and audio gear arrangement.", price: "₱500/day", image: djStand },
-        { name: "QSC Speakers", desc: "Industry-standard high-output active loudspeakers delivering powerful, crystal-clear audio to any venue.", price: "₱4,500/day", image: qscSpeakers },
-        { name: "QSC Sub-Woofer", desc: "High-powered subwoofers providing deep, impactful bass response ideal for concerts and high-energy events.", price: "₱3,500/day", image: subWoofer },
-        { name: "Speaker Stand", desc: "Heavy-duty speaker stands elevating speakers to optimize sound distribution across the audience.", price: "₱500/day", image: speakerStand },
-        { name: "Mic Stands", desc: "Adjustable floor-standing microphone stands designed for flexible performer and speaker positioning.", price: "₱300/day", image: micStand },
-        { name: "Light Stands", desc: "Sturdy telescoping light stands for mounting lighting fixtures at correct heights and angles.", price: "₱300/day", image: lightStand },
-        { name: "Lyrics Stands", desc: "Dedicated music stands for displaying lyrics, cue cards, or scripts for performers.", price: "₱200/day", image: lyricsStand},
-        { name: "Tigertouch Light Controller", desc: "High-performance multi-touch lighting console for programming complex fixtures, chases, and stage lights.", price: "₱8,000/day", image: tigerTouch },
-        { name: "LED Bar", desc: "Vibrant multi-color LED wash bars for creating dynamic wall uplighting and creative stage accent effects.", price: "₱1,500/day", image: ledBar },
-        { name: "LED Par", desc: "Powerful LED par cans for versatile stage lighting, wash effects, and broad color coverage.", price: "₱800/day", image: ledPar },
-        { name: "Shure Headworn Microphones", desc: "Shure comfortable headworn microphones offering hands-free vocal clarity for presenters and performers.", price: "₱1,500/day", image: headwornMic },
-        { name: "DMX Light Controller", desc: "Professional live lighting console for programming cues, static chases, and intricate stage lighting evolution.", price: "₱3,500/day", image: dmxController },
-        { name: "XLR Cables", desc: "Professional-grade XLR cables ensuring noise-free and reliable audio signal transmission.", price: "₱200/day", image: xlrCable },
-        { name: "HDMI Cables", desc: "High-speed HDMI cables delivering crystal-clear video signal playback across monitors and displays.", price: "₱200/day", image: hdmiCable },
-        { name: "Power Cables", desc: "Heavy-duty power distribution cables safely supplying electricity to all audio and lighting gear.", price: "₱150/day", image: powerCable },
-        { name: "Snake Cable", desc: "Multi-channel stage audio snake box streamlining complex multi-microphone cable runs.", price: "₱500/day", image: snakeCable },
-        { name: "LAN Cables", desc: "Reliable networking cables facilitating high-speed data transmission for switchers and streaming gear.", price: "₱150/day", image: lanCable },
-        { name: "Extension Cords", desc: "Durable electrical extension cords for safely powering audio and lighting equipment throughout the venue.", price: "₱200/day", image: extensionCord2 },
-        { name: "DMX Cables", desc: "Specialized DMX data cables ensuring precise digital lighting signal transmission from lighting controllers and fixtures.", price: "₱150/day", image: dmxCables },
-      ]
-    }
-  };
+  livestream: {
+    title: "LIVESTREAM RENTAL",
+    subtitle: "Full broadcast-grade production equipment for live streaming events of any scale.",
+    items: [
+      { name: "Sony Bravia 43 inches TV", desc: "4K HDR commercial display ideal for stage confidence, program return, and greenroom monitoring.", price: "₱2,500/day", image: tvImage },
+      { name: "TCL 55 inches TV", desc: "Large-format 4K display for stage multiviewers, technical directors, and client monitoring booths.", price: "₱2,800/day", image: tvImage2 },
+      { name: "Samsung 22 inches monitor", desc: "Compact desktop display for switcher multiview feeds, graphics preview, and streaming laptops.", price: "₱600/day", image: monitorImage },
+      { name: "Asus 24 inches monitor", desc: "Full HD low-latency monitor for precise camera switching, multiview monitoring, and technical ops.", price: "₱800/day", image: monitorImage2 },
+      { name: "Dell 24 inches monitor", desc: "Color-accurate IPS display for video shading, live color balancing, and graphics queuing.", price: "₱800/day", image: monitorImage3 },
+      { name: "Dell 27 inches monitor", desc: "Spacious QHD/FHD display suited for multi-window vMix, OBS, and TriCaster interface monitoring.", price: "₱1,000/day", image: monitorImage4 },
+      { name: "Sony PXW-Z90", desc: "Compact 4K HDR broadcast camcorder with fast hybrid autofocus, 12x optical zoom, and 3G-SDI output.", price: "₱3,500/day", image: lsCameras },
+      { name: "Obsbot Tel-air", desc: "AI-powered PTZ webcam camera with automated subject tracking and gesture control for solo speakers.", price: "₱1,500/day", image: obsbot },
+      { name: "Tricaster nc1 io", desc: "Multi-channel IP/NDI and SDI ingest/output interface module for hybrid live broadcast pipelines.", price: "₱12,000/day", image: tricaster1 },
+      { name: "TriCaster tc1", desc: "Complete 16-channel 4K multi-camera switching, recording, streaming, and real-time graphics suite.", price: "₱18,000/day", image: tricaster2 },
+      { name: "BMD Atem Studio HD", desc: "Broadcast live production switcher featuring 4 SDI and 4 HDMI inputs, DVE, and multi-view output.", price: "₱4,000/day", image: switcher1 },
+      { name: "BMD Design Smartview 4k G3", desc: "Ultra HD broadcast rackmount monitor supporting 12G-SDI inputs, 3D LUTs, and on-screen tally.", price: "₱3,000/day", image: switcher2 },
+      { name: "Roland xs 1-hd switcher", desc: "Multi-format 4-channel matrix switcher providing seamless cross-dissolve and multi-screen scaling.", price: "₱3,500/day", image: switcher3 },
+      { name: "AJA Ki Pro Ultra 12g", desc: "Apple ProRes and Avid DNx multichannel 4K/UltraHD recorder with 12G-SDI and HDMI 2.0 connectivity.", price: "₱6,500/day", image: ajakipro },
+      { name: "AJA Pak Media 1TB", desc: "High-speed solid-state recording media engineered for continuous broadcast captures on AJA systems.", price: "₱1,000/day", image: ajapakmedia },
+      { name: "Hollyland Cosmo C1 Wireless Video Transmission System", desc: "Zero-latency wireless video transmitter and receiver set delivering uncompressed 1080p60 over 1,000 ft.", price: "₱2,200/day", image: hollylandCosmoc1Wireless },
+      { name: "Accsoon CineView SE Video Transmitter and Receiver", desc: "Dual-band 2.4GHz & 5GHz wireless transmission system with up to 1,200 ft range and Quad-monitoring.", price: "₱1,800/day", image: accsoonCineview },
+      { name: "Hollyland Cosmo C1 Commset", desc: "Full-duplex wireless crew intercom system providing crystal-clear production communication.", price: "₱2,500/day", image: commsets },
+      { name: "Perfect Cue Clicker with Dual Transmitter System", desc: "Industry-standard presentation remote with RF dual-transmitters, visual cue lights, and USB slide advance.", price: "₱2,000/day", image: clickerPerfectCue },
+      { name: "Zoom H6", desc: "Six-track portable audio field recorder with interchangeable microphone capsules and 4 XLR inputs.", price: "₱1,200/day", image: zoomh6 },
+      { name: "Focusrite 18i20 4th Gen", desc: "Professional rackmount USB audio interface with 8 pristine preamps for master broadcast streaming audio.", price: "₱2,000/day", image: focusrite },
+      { name: "Manfrotto Heavy Duty Tripod", desc: "Sturdy video tripod legs with fluid head for smooth, steady panning and tilt camera moves.", price: "₱800/day", image: manfrottoTripod },
+      { name: "Manfrotto Light Stand", desc: "Heavy-duty telescoping stand for securely positioning key lights, fill panels, or wireless receivers.", price: "₱300/day", image: manfrottoLightstand },
+      { name: "APC C1500 Uninterrupted Power Supply", desc: "1500VA battery backup and surge protector preventing production power loss to broadcast gear.", price: "₱1,200/day", image: ups },
+      { name: "100 Meters Vention Fiber Optic Cable", desc: "High-speed active optical HDMI cable delivering loss-free 4K video across long event venue runs.", price: "₱600/day", image: vention100m },
+      { name: "DJI RS 5 Gimbal Stabilizer", desc: "3-axis motorized camera stabilizer for cinematic roaming shots and dynamic moving camera coverage.", price: "₱2,500/day", image: gimbalStabilizerDjiRs5 },
+      { name: "Anker PowerPort 6", desc: "Multi-port USB charging station providing regulated power for wireless receivers, tablets, and clickers.", price: "₱250/day", image: ankerPowerport },
+      { name: "NPF Battery", desc: "High-capacity NP-F970 rechargeable lithium battery for monitors, LED fill panels, and wireless transmitters.", price: "₱200/day", image: npfbattery },
+      { name: "NPF Fast Charger", desc: "Multi-slot quick charger for rapid turnover of production NP-F batteries on long event days.", price: "₱200/day", image: smallrigNpf970Charger },
+      { name: "Mini-USB Cable", desc: "Durable auxiliary data and device-control interconnect cable.", price: "₱50/day", image: cableMiniUSB },
+      { name: "Micro-USB Cable", desc: "Standard peripheral data/power cable for legacy gear, controllers, and charging docks.", price: "₱50/day", image: cableMicroUSB },
+      { name: "USB Type B Cable", desc: "Reliable USB 2.0 host cable for connecting audio interfaces, DACs, and control units to PCs.", price: "₱50/day", image: cableTypeB },
+      { name: "USB Type C Cable", desc: "High-throughput data, power, and video interconnect cable for modern streaming capture workflows.", price: "₱80/day", image: cableTypeC },
+      { name: "Wyrestorm EX-35-H2 HDMI Extenders", desc: "HDBaseT point-to-point HDMI transmitter and receiver set over standard Cat6 networking runs.", price: "₱1,000/day", image: wyrestorm },
+      { name: "Decimator MD-HX with Power Adapter", desc: "Miniature cross-converter handling HDMI/SDI scaling, frame rate conversion, and signal distribution.", price: "₱1,500/day", image: decimator },
+      { name: "Birddog Studio NDI with Power Adapter", desc: "Hardware encoder/decoder converting SDI/HDMI feeds into full-bandwidth NDI streams over LAN.", price: "₱1,800/day", image: birddog },
+      { name: "Jtech Digital HDMI Splitter 1x2", desc: "1-in 2-out HDMI splitter supporting full 4K resolution and EDID management for multi-screen feeds.", price: "₱300/day", image: jtech },
+      { name: "Rei HDMI Splitter 1x4", desc: "Compact 1-in 4-out powered distribution amplifier duplicating video signals to up to 4 monitors.", price: "₱450/day", image: splitterHdmi1x4 },
+      { name: "Aten 1x8 HDMI Splitter", desc: "Professional 8-port HDMI distribution amplifier delivering synchronized video feeds across event halls.", price: "₱750/day", image: splitterAten1x8 },
+      { name: "Cable Matters USB C HDMI Adapter", desc: "Plug-and-play video converter for outputting clean presentation slides from USB-C laptops to switchers.", price: "₱200/day", image: cableMatters },
+      { name: "BMD SDI to HDMI Mini Converters", desc: "Rugged broadcast converter transforming camera SDI signals to HDMI for local displays and multiviewers.", price: "₱500/day", image: converterSdiHdmi },
+      { name: "BMD HDMI to SDI Mini Converters", desc: "Broadcast-grade converter converting HDMI laptop and camera outputs into professional SDI runs.", price: "₱500/day", image: converterHdmiSdi },
+      { name: "BMD Bi Directional Mini Converter", desc: "Simultaneous cross-converter passing SDI to HDMI and HDMI to SDI in different formats at the same time.", price: "₱650/day", image: converterBiDirectional },
+      { name: "BMD SDI to HDMI 4k Heavy Duty", desc: "Machined aircraft-grade aluminum video converter built for intense stage use and 4K signal integrity.", price: "₱850/day", image: converterSdiHdmi4k },
+      { name: "Samsung 970 Evo External Hard Disk 1TB", desc: "Ultra-fast NVMe solid-state storage in a rugged USB-C enclosure for uncompressed master program recording.", price: "₱500/day", image: ssdSamsung },
+      { name: "Stream Deck XL", desc: "32-key customizable LCD macro control surface for instant switcher cuts, graphics firing, and audio cues.", price: "₱1,200/day", image: streamdeck },
+      { name: "Manfrotto Pixie Tripod", desc: "Compact desktop mini-tripod for mounting webcams, audio recorders, or wireless receiver antennas.", price: "₱150/day", image: manfrottoPixieTripod },
+      { name: "Logitech Clicker", desc: "Ergonomic wireless slide clicker with red laser pointer for smooth stage presentations.", price: "₱250/day", image: logitechClicker },
+      { name: "Anker 20000 Mah Power bank", desc: "Heavy-duty portable external battery providing extended runtime for mobile cameras and field rigs.", price: "₱300/day", image: anker20kmahPowerbank },
+      { name: "Short SDI Cables", desc: "Patch-length 3G/6G-SDI cables for tidy interconnects between cameras, monitors, and converters.", price: "₱80/day", image: sdicableShortie },
+      { name: "Lumantek eZ-MD+", desc: "Cross-converter and down/up/cross scaler handling conversions between HDMI and SDI signals reliably.", price: "₱1,500/day", image: lumantekEzMdPlus },
+      { name: "Magewell Capture Card HDMI 4k Plus", desc: "Low-latency external USB 3.0 video capture card accepting up to 4K60 video inputs.", price: "₱1,000/day", image: magewellCapturecard },
+      { name: "Magewell USB Capture HDMI Gen 2", desc: "Industry-standard driverless USB video capture dongle for clean 1080p camera inputs into streaming software.", price: "₱800/day", image: magewellCaptureGen2 },
+      { name: "UGREEN Multicard Readers", desc: "High-speed USB 3.0 multi-format memory card reader for rapid SD/microSD footage ingestion.", price: "₱150/day", image: ugreenMulticardReaders },
+      { name: "UGREEN USB Expansion", desc: "Powered multi-port USB hub ensuring stable peripheral connections to central production laptops.", price: "₱200/day", image: ugreenUsbexpansion },
+      { name: "Asus Zephyrus Dual Screen", desc: "Flagship dual-display workstation laptop for live video encoding, multiview, and master streaming.", price: "₱3,500/day", image: laptopAsusZephyus },
+      { name: "Asus ROG Strix G15 15 inch", desc: "High-performance gaming laptop with dedicated GPU for vMix production, virtual sets, and graphics.", price: "₱2,800/day", image: laptopAsusRogstrix },
+      { name: "Asus TUF 15 inch", desc: "Reliable production laptop optimized for secondary live recording, presentation playback, and stream backup.", price: "₱2,200/day", image: laptopAsusTufF15 },
+      { name: "Suncomm 5G Router", desc: "High-speed 5G cellular bonded/failover SIM router providing redundant uplink bandwidth on location.", price: "₱1,500/day", image: suncomm5gRouter },
+      { name: "Asus Gaming Router", desc: "High-throughput Wi-Fi 6 router providing dedicated local IP networking for NDI video and tech crew ops.", price: "₱800/day", image: asusGamingRouter },
+      { name: "TP Link CPE710", desc: "Outdoor high-gain directional wireless bridge dish for establishing long-range line-of-sight data links.", price: "₱700/day", image: tplinkCpe710 },
+      { name: "HDMI Cable (1 meter)", desc: "Short high-speed HDMI patch cable for video monitor and capture card interconnects.", price: "₱50/day", image: hdmi1m },
+      { name: "HDMI Cable (3 meters)", desc: "Standard 3m HDMI cable connecting switcher control tables to local tech monitors and laptops.", price: "₱80/day", image: hdmi3m },
+      { name: "HDMI Cable (15 meters)", desc: "Long high-speed HDMI run with signal repeater for stage screens and distant confidence displays.", price: "₱200/day", image: hdmi15m },
+      { name: "HDMI Cable (20 meters)", desc: "Heavy-gauge reinforced 20m HDMI cable for routing video feeds across medium venue stages.", price: "₱250/day", image: hdmi20m },
+      { name: "SDI Cable (5 meters)", desc: "Flexible high-performance 75-ohm BNC cable for connecting nearby cameras to video switchers.", price: "₱100/day", image: sdicable5m },
+      { name: "SDI Cable (10 meters)", desc: "Durable shielded coaxial SDI cable for routing clean digital camera signals around the control desk.", price: "₱150/day", image: sdicable10m },
+      { name: "LAN Cable (3 meters)", desc: "Cat6 Ethernet patch cable for local switcher, audio console, and streaming laptop connections.", price: "₱50/day", image: lancable3m },
+      { name: "LAN Cable (5 meters)", desc: "Standard Cat6 network cable connecting production desks to local network switches and routers.", price: "₱80/day", image: lancable5m },
+      { name: "LAN Cable (20 meters)", desc: "Heavy-duty Cat6 Ethernet cable for running IP networks between FOH control and stage equipment.", price: "₱200/day", image: lancable20m },
+      { name: "LAN Cable (50 meters)", desc: "Spool-grade Cat6 network cable for long-distance event venue network distribution and NDI streams.", price: "₱350/day", image: lancable50m },
+      { name: "LAN Cable (75 meters)", desc: "Extra long heavy-gauge shielded Cat6 drum for expansive outdoor and auditorium production lines.", price: "₱500/day", image: lancable75m },
+      { name: "Roland XS 1-hd", desc: "Compact multi-format matrix video switcher with built-in scalers on all inputs and preview outputs.", price: "₱3,500/day", image: roland },
+      { name: "BMD Decklink 8k Pro G2", desc: "PCIe 8-lane capture card featuring four bi-directional 12G-SDI connections for high-end ingest.", price: "₱4,500/day", image: decklink8kProG2Sm },
+      { name: "BMD Decklink Duo", desc: "PCIe capture card with 4 independent SDI channels configurable as capture or playback for custom rigs.", price: "₱3,000/day", image: bmdDecklinkDuo },
+      { name: "Microtik 4011b Router", desc: "Enterprise 10-port Gigabit router with 10Gbps SFP+ cage for mission-critical network routing and QoS.", price: "₱1,200/day", image: mikrotikRouter },
+      { name: "APC 750i UPS", desc: "Compact battery backup unit protecting streaming workstations and audio interfaces against voltage drops.", price: "₱800/day", image: ups750 },
+    ]
+  },
+  projector: {
+    title: "PROJECTOR RENTAL",
+    subtitle: "Complete projection solutions for presentations, seminars, and corporate events.",
+    items: [
+  {
+    id: "epson-2255u",
+    name: "Epson 2255u 5k Lumens Projector",
+    desc: "High-lumen Epson projector delivering sharp WUXGA full HD images even in well-lit conference and event halls.",
+    price: "₱3,500/day",
+    image: projector,
+  },
+  {
+    id: "projector-stands",
+    name: "Projector Stands",
+    desc: "Adjustable heavy-duty tripod stands for optimal projector elevation and projection angle alignment.",
+    price: "₱500/day",
+    image: projectorStand,
+  },
+  {
+    id: "projector-bracket-75-10",
+    name: "Projector 7.5 x 10 Bracket",
+    desc: "Heavy-duty structural mounting bracket and hardware designed for secure 7.5x10 ft screen truss hanging.",
+    price: "₱800/day",
+    image: projectorBracket75,
+  },
+  {
+    id: "projector-bracket-9-12",
+    name: "Projector 9 x 12 Bracket",
+    desc: "Reinforced stage mounting bracket kit for securing large 9x12 ft fast-fold projection frames.",
+    price: "₱1,000/day",
+    image: projectorBracket912,
+  },
+  {
+    id: "projector-screen-bracket-5-8",
+    name: "Projector 5 x 8 Screen and Bracket",
+    desc: "Compact matte white professional projection screen and mounting kit suitable for breakout rooms and small venues.",
+    price: "₱1,500/day",
+    image: projectorBracket58,
+  },
+  {
+    id: "projector-screen-75-10",
+    name: "Projector Screen 7.5 x 10",
+    desc: "Matte white professional fast-fold projection screen providing high-contrast, uniform visuals for medium audiences.",
+    price: "₱1,500/day",
+    image: projectorScreen75,
+  },
+  {
+    id: "projector-screen-9-12",
+    name: "Projector Screen 9 x 12",
+    desc: "Large-format fast-fold stage projection screen engineered for plenary halls, conventions, and ballrooms.",
+    price: "₱2,200/day",
+    image: projectorScreen912,
+  },
+  {
+    id: "laptop",
+    name: "Laptop",
+    desc: "High-performance laptops pre-configured for smooth slide playback, video, and presentation software.",
+    price: "₱2,000/day",
+    image: laptop,
+  },
+  {
+    id: "Hollyland Cosmo C1 Wireless Video Transmission System",
+    name: "Hollyland Cosmo C1 Wireless Video Transmission System",
+    desc: "Zero-latency wireless video transmitter and receiver set delivering uncompressed 1080p60 over 1,000 ft.",
+    price: "₱2,200/day",
+    image: hollylandCosmoc1Wireless,
+  },
+  {
+    id: "mini-folding-table",
+    name: "Mini Folding Table",
+    desc: "Compact, durable folding table for staging technical laptops, clicker bases, and projector controllers.",
+    price: "₱300/day",
+    image: foldingTable,
+  },
+  {
+    id: "extension-cord",
+    name: "Extension Cord",
+    desc: "Heavy-gauge extension cords ensuring reliable power delivery to the projector and supporting equipment.",
+    price: "₱200/day",
+    image: extensionCord1,
+  },
+  {
+    id: "prestar-push-cart",
+    name: "Prestar Push Cart",
+    desc: "Heavy-duty silenced platform trolley for safe and swift transport of sensitive AV cases and equipment on site.",
+    price: "₱400/day",
+    image: pushCart,
+  },
+]
+  },
+  lights: {
+    title: "LIGHTS & SOUNDS",
+    subtitle: "Professional audio and dynamic lighting rigs that transform any venue into a stage-ready environment.",
+    items: [
+      // --- AUDIO: Mixers, Controllers & DI ---
+      { name: "Yamaha DM3 Dante Digital Audio Mixer", desc: "Ultra-compact 16-channel digital mixing console featuring Dante networking and broadcast-ready USB audio.", price: "₱3,500/day", image: yamahaDm3 },
+      { name: "Pioneer DDJ FLX-4", desc: "Industry-standard 2-channel DJ controller for event music programming, walk-in tracks, and stage stings.", price: "₱2,500/day", image: ddjFlx4 },
+      { name: "Whirlwind pcDi Box", desc: "Dual-channel passive direct box with RCA, 3.5mm, and 1/4\" inputs for hum-free laptop audio direct to mixers.", price: "₱400/day", image: whirlwindPcdi },
+      { name: "Radial Pro D2", desc: "High-end passive stereo direct box built with custom transformers to eliminate ground loops on stage instruments.", price: "₱600/day", image: radialProD2 },
+      { name: "Steinberg UR44", desc: "6x4 USB 2.0 audio interface with 4 D-PRE microphone preamps and latency-free DSP hardware monitoring.", price: "₱1,200/day", image: steinberg },
+
+      // --- AUDIO: Speakers & Subs ---
+      { name: "QSC k12.2 Speakers", desc: "2000-watt powered active 12-inch point-source loudspeaker delivering high SPL and pristine clarity.", price: "₱2,250/day", image: qscSpeakers },
+      { name: "QSC ks118 Sub", desc: "3600-watt direct-radiating 18-inch powered subwoofer delivering deep, chest-thumping low-end bass.", price: "₱3,500/day", image: qscSub },
+
+      // --- AUDIO: Microphones & Wireless Systems ---
+      { name: "Shure SLXD System Handheld Mics", desc: "Transparent 24-bit digital wireless handheld microphone system with stable RF for events and talks.", price: "₱1,800/day", image: slxD },
+      { name: "Shure ULXD System Handheld Mics", desc: "Tour-grade digital wireless handheld system with exceptional audio clarity and AES-256 encryption.", price: "₱2,500/day", image: shureUlxd2 },
+      { name: "Shure ULXD1 System with DPA Headworn Mics", desc: "Premium discrete miniature headset microphone paired with ULX-D bodypack for elite stage speakers.", price: "₱3,000/day", image: shureUlxd1 },
+      { name: "Sennheiser E-835 Mics", desc: "Durable cardioid dynamic lead vocal stage microphone with high feedback rejection.", price: "₱300/day", image: senn835 },
+      { name: "Sennheiser G4 Lapel Set", desc: "Industry-workhorse wireless lavalier clip-on microphone system for keynotes, interviews, and panel discussions.", price: "₱1,500/day", image: sennG4 },
+      { name: "Bphs1 Audio Technica", desc: "Broadcast stereo headset with closed-back dynamic ears and cardioid boom mic for production commentators.", price: "₱800/day", image: bphs1 },
+      { name: "Rode NTG3 Boom Mic", desc: "Precision broadcast shotgun microphone with RF-bias technology offering warm sound and high moisture resistance.", price: "₱1,500/day", image: rodeNtg3 },
+      { name: "Secondary Boom Mics", desc: "Directional condenser shotgun mic setup for audience reaction, backup boom, and stage ambient pickup.", price: "₱800/day", image: tmAm1Boom },
+      { name: "RODE BLIMP", desc: "Complete windshield and shock mounting acoustic basket system eliminating stage draft and wind rumble.", price: "₱600/day", image: rodeBlimp },
+
+      // --- AUDIO: Wireless Accessories ---
+      { name: "Shure Lithium Batteries", desc: "Rechargeable SB900 lithium-ion battery packs providing up to 9+ hours of continuous mic operation.", price: "₱200/day", image: shureBattery },
+      { name: "Shure Dual Battery Dock Chargers", desc: "Networked dual-dock charging station for real-time monitoring and recharging of Shure transmitter packs.", price: "₱400/day", image: shureDualDock },
+      { name: "Shure UA-874 Directional Antennas", desc: "Active directional paddle antenna with integrated RF amplifier for clean wireless reception across large venues.", price: "₱1,000/day", image: shureUa874 },
+      { name: "Shure Antenna Distribution System", desc: "4-way active antenna splitter feeding up to 4 dual-receivers from a single pair of paddle antennas.", price: "₱1,200/day", image: shureAntennaDist },
+
+      // --- LIGHTING: Controllers & Fixtures ---
+      { name: "Tigertouch 2 Light Controller", desc: "Flagship multi-touch console with motorized faders and expansive DMX universes for full concert lighting rigs.", price: "₱8,000/day", image: tigerTouch2 },
+      { name: "DMX-384 Light Controller", desc: "Standard 19-inch rackmount DMX operator console for controlling par cans, washes, and basic moving heads.", price: "₱1,500/day", image: dmx384 },
+      { name: "LED BAR lsl-16s", desc: "Multi-segment RGBW linear wash bar creating vibrant wall grazes, backdrop washes, and stage silhouettes.", price: "₱600/day", image: ledBarLsl16 },
+      { name: "LED PAR Lumilites lps-6033", desc: "High-output RGBW LED par can for front stage wash, spotlighting, and atmospheric room accent uplighting.", price: "₱400/day", image: ledPar },
+      { name: "LBL-295 Moving Heads", desc: "High-intensity 295W beam moving head fixture producing razor-sharp aerial prism patterns and stage dynamics.", price: "₱1,800/day", image: movingHeads },
+      { name: "JOJEN Haze Machine 1000W", desc: "Professional continuous oil/water-based haze generator creating an even optical mist to highlight lighting beams.", price: "₱1,500/day", image: hazeMachine },
+
+      // --- STANDS & MOUNTS ---
+      { name: "Mic Rack", desc: "Rugged flight-case rack designed for organized stage storage, transport, and charging of wireless microphones.", price: "₱300/day", image: testpicture },
+      { name: "Hercules DJ Stand", desc: "Foldable heavy-duty stage table stand engineered for DJ decks, laptops, and tabletop mixers.", price: "₱500/day", image: herculesDjStand },
+      { name: "Hercules Speaker Stand", desc: "Heavy-duty aluminum speaker tripod with Quick-N-EZ auto lock system supporting up to 45kg loads.", price: "₱350/day", image: herculesSpeakerStand },
+      { name: "Hercules MS5 33B Mic Stand", desc: "Professional stage microphone stand with weighted round base and Hideaway boom arm.", price: "₱200/day", image: herculesMicStand },
+      { name: "Hercules Orchestral Stand BS311B", desc: "Perforated aluminum sheet music and script desk stand with EZ angle adjustment for stage conductors.", price: "₱250/day", image: herculesLyricStand },
+      { name: "Hercules LS700B – Gear Up Lighting Stand", desc: "Heavy-duty hand-crank lighting tripod extending to 3.5m with dual T-bars for flying par cans and movers.", price: "₱800/day", image: herculesLightStand },
+      { name: "RODE PSA 1+ studio arm", desc: "Premium articulated desk-mount studio boom arm with silent springs for live podcast and commentator mics.", price: "₱400/day", image: rodePsa1 },
+      { name: "PEARL Drum throne d-730s", desc: "Ergonomic round padded musician stool with double-braced tripod legs for stage performers and drummers.", price: "₱300/day", image: drumThrone },
+
+      // --- CABLES & POWER ---
+      { name: "XLR Cable 3 Meters", desc: "Balanced studio-grade oxygen-free microphone cable with genuine Neutrik connectors for clean audio paths.", price: "₱80/day", image: xlrCable3m },
+      { name: "XLR Cable 20 Meters", desc: "Durable heavy-jacketed balanced XLR cable for long runs from stage microphones to sub-snakes and FOH.", price: "₱150/day", image: xlrCable20m },
+      { name: "Snake Cable", desc: "Multi-channel stage audio snake box streamlining multi-microphone cable runs to the front-of-house mixer.", price: "₱800/day", image: snakeCable },
+      { name: "DMX Cables 3 Meters", desc: "True 110-ohm shielded DMX data patch cable for linking adjacent lighting fixtures without flicker.", price: "₱80/day", image: dmxCable3m },
+      { name: "DMX Cables 20 Meters", desc: "Long shielded DMX512 cable for routing digital lighting control signals from console to stage trusses.", price: "₱150/day", image: dmxCable10m },
+      { name: "HDMI Cables", desc: "High-speed active/passive video cable delivering crystal-clear digital video signal playback across displays.", price: "₱150/day", image: ventionFiber },
+      { name: "Omni 15 Meters Extension Cord", desc: "Heavy-duty rubber-coated 15m power cord providing safe high-wattage electricity distribution across venues.", price: "₱200/day", image: omni15m },
+      { name: "Omni 10 Gang Extension Cord", desc: "Surge-protected multi-outlet power distribution strip designed to power complete technical tables and rigs.", price: "₱250/day", image: omni10gang },
+    ]
+  },
+};
 
   const addToCart = (item) => {
     if (!cart.some(i => i.name === item.name)) {
@@ -330,7 +629,8 @@ const ClientMain = () => {
             </div>
 
             <div className="flex items-center space-x-5">
-                         {session ? (
+
+              {session ? (
                 <>
                   <button
                     onClick={() => navigate("/client/dashboard")}
@@ -391,11 +691,7 @@ const ClientMain = () => {
 
             <div className="mt-8 flex items-center justify-center">
               <button
-                onClick={() =>
-                  document
-                    .getElementById("contact")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
+                onClick={() => navigate("/client/booking")}
                 className="border border-red-600 text-white text-xs md:text-sm font-semibold tracking-[0.08em] uppercase px-8 py-4 rounded-lg hover:bg-red-600/20 transition font-['Montserrat',sans-serif]"
               >
                 Book Now
@@ -565,7 +861,7 @@ const ClientMain = () => {
               </div>
             </div>
 
-            {/* --- OWNER --- */}
+            {/* --- OWNER 
             <div className="mt-16 md:mt-20">
               <h3 className="text-2xl md:text-3xl font-black tracking-wide uppercase text-center mb-10 text-white">
                 OWNED BY 
@@ -603,123 +899,127 @@ const ClientMain = () => {
                     <p className="text-neutral-400 text-xs md:text-sm leading-relaxed max-w-[220px] mx-auto">
                       {leader.bio}
                     </p>
-                  </div>
-                ))}
+                  </div> 
+                ))} 
               </div>
-            </div>
+            </div> --- */}
           </div>
         </section>
 
         {/* --- PROMOS SECTION --- */}
-<section
-  id="promos"
-  className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
->
-  <div className="max-w-7xl mx-auto px-6">
-    <div className="text-center max-w-2xl mx-auto mb-14">
-      <span className="text-red-500 text-xs md:text-sm font-bold tracking-[0.16em] uppercase">
-        Special Offers
-      </span>
-      <h2 className="text-white text-3xl md:text-4xl font-extrabold mt-2 mb-4">
-        Current Promotions
-      </h2>
-      <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
-        Take advantage of our exclusive deals and make your next event
-        extraordinary while saving on professional livestreaming
-        services.
-      </p>
-    </div>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {[
-        {
-          icon: Clock,
-          title: "Early Bird Event Package",
-          desc: "Book your event 3 months in advance and get a 15% discount on our full-service livestreaming package.",
-          code: "EARLYBIRD15",
-          date: "Dec 31, 2026",
-          image: promoEarlyBird,
-        },
-        {
-          icon: Gift,
-          title: "Wedding Season Special",
-          desc: "Complete wedding coverage including drone shots, multi-cam setup, and highlight reel. Save ₱10,000 when you book this month.",
-          code: "WEDDING2026",
-          date: "Aug 31, 2026",
-          image: promoWedding,
-        },
-        {
-          icon: Tag,
-          title: "Corporate Webinar Bundle",
-          desc: "Includes studio rental, professional lighting, multi-cam switching, and custom graphics overlay. Get 1 hour free setup time.",
-          code: "CORPSTREAM",
-          date: "Oct 15, 2026",
-          image: promoWebinar,
-        },
-      ].map((promo, i) => (
-        <div
-          key={i}
-          className="group relative bg-[#141414] border border-[#253147] rounded-2xl overflow-hidden font-['Poppins',sans-serif] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_32px_rgba(255,0,0,0.18)] cursor-pointer"
+        <section
+          id="promos"
+          className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
         >
-          {/* Image container with scale & dark overlay adjustment */}
-          <div className="relative h-44 overflow-hidden bg-neutral-900">
-            <img
-              src={promo.image}
-              alt={promo.title}
-              className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-black/35 group-hover:bg-black/20 transition-colors duration-300" />
-            <span className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
-              Limited Time
-            </span>
-          </div>
-
-          <div className="p-6">
-            {/* Header: Icon scale + Title color shift */}
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-8 h-8 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center mt-0.5 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
-                <promo.icon size={15} className="transition-transform duration-300 group-hover:rotate-6" />
-              </div>
-              <h3 className="text-white text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-red-500">
-                {promo.title}
-              </h3>
-            </div>
-
-            <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 min-h-[60px] transition-colors duration-200 group-hover:text-neutral-300">
-              {promo.desc}
-            </p>
-
-            {/* Promo Code box */}
-            <div className="bg-black border border-[#2b2b2b] rounded-lg px-4 py-3 mb-4 transition-all duration-300 group-hover:border-red-600/40">
-              <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
-                Promo Code:
-              </p>
-              <p className="text-white text-base font-extrabold tracking-[0.08em] transition-colors duration-300 group-hover:text-red-400">
-                {promo.code}
-              </p>
-            </div>
-
-            <div className="border-t border-[#293245] pt-4 flex items-center justify-between">
-              <span className="text-xs text-neutral-500 flex items-center gap-1.5 transition-colors duration-200 group-hover:text-neutral-400">
-                <Clock size={12} className="text-red-500" /> Valid until {promo.date}
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center max-w-2xl mx-auto mb-14">
+              <span className="text-red-500 text-xs md:text-sm font-bold tracking-[0.16em] uppercase">
+                Special Offers
               </span>
-              <button
-                onClick={() =>
-                  document
-                    .getElementById("contact")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="text-red-500 hover:text-red-400 text-xs font-semibold inline-flex items-center gap-1 transition-transform duration-200 group-hover:translate-x-1 cursor-pointer"
-              >
-                Book Now →
-              </button>
+              <h2 className="text-white text-3xl md:text-4xl font-extrabold mt-2 mb-4">
+                Current Promotions
+              </h2>
+              <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
+                Take advantage of our exclusive deals and make your next event
+                extraordinary while saving on professional livestreaming
+                services.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                {
+                  icon: Clock,
+                  title: "Early Bird Event Package",
+                  desc: "Book your event 3 months in advance and get a 15% discount on our full-service livestreaming package.",
+                  code: "EARLYBIRD15",
+                  date: "Dec 31, 2026",
+                  image: promoEarlyBird,
+                },
+                {
+                  icon: Gift,
+                  title: "Wedding Season Special",
+                  desc: "Complete wedding coverage including drone shots, multi-cam setup, and highlight reel. Save ₱10,000 when you book this month.",
+                  code: "WEDDING2026",
+                  date: "Aug 31, 2026",
+                  image: promoWedding,
+                },
+                {
+                  icon: Tag,
+                  title: "Corporate Webinar Bundle",
+                  desc: "Includes studio rental, professional lighting, multi-cam switching, and custom graphics overlay. Get 1 hour free setup time.",
+                  code: "CORPSTREAM",
+                  date: "Oct 15, 2026",
+                  image: promoWebinar,
+                },
+              ].map((promo, i) => (
+                <div
+                  key={i}
+                  className="group relative bg-[#141414] border border-[#253147] rounded-2xl overflow-hidden font-['Poppins',sans-serif] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_32px_rgba(255,0,0,0.18)] cursor-pointer"
+                >
+                  {/* Image container with scale & dark overlay adjustment */}
+                  <div className="relative h-44 overflow-hidden bg-neutral-900">
+                    <img
+                      src={promo.image}
+                      alt={promo.title}
+                      className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/35 group-hover:bg-black/20 transition-colors duration-300" />
+                    <span className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                      Limited Time
+                    </span>
+                  </div>
+
+                  <div className="p-6">
+                    {/* Header: Icon scale + Title color shift */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center mt-0.5 shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
+                        <promo.icon size={15} className="transition-transform duration-300 group-hover:rotate-6" />
+                      </div>
+                      <h3 className="text-white text-lg font-bold leading-tight transition-colors duration-300 group-hover:text-red-500">
+                        {promo.title}
+                      </h3>
+                    </div>
+
+                    <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 min-h-[60px] transition-colors duration-200 group-hover:text-neutral-300">
+                      {promo.desc}
+                    </p>
+
+                    {/* Promo Code box */}
+                    <div className="bg-black border border-[#2b2b2b] rounded-lg px-4 py-3 mb-4 transition-all duration-300 group-hover:border-red-600/40">
+                      <p className="text-[10px] text-neutral-500 uppercase tracking-wider mb-1">
+                        Promo Code:
+                      </p>
+                      <p className="text-white text-base font-extrabold tracking-[0.08em] transition-colors duration-300 group-hover:text-red-400">
+                        {promo.code}
+                      </p>
+                    </div>
+
+                    <div className="border-t border-[#293245] pt-4 flex items-center justify-between">
+                      <span className="text-xs text-neutral-500 flex items-center gap-1.5 transition-colors duration-200 group-hover:text-neutral-400">
+                        <Clock size={12} className="text-red-500" /> Valid until {promo.date}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevents clicking issues with the parent div
+                          if (session) {
+                            navigate("/client/booking");
+                          } else {
+                            alert("Please sign in or create an account to book this promo.");
+                            navigate("/login");
+                          }
+                        }}
+                        className="text-red-500 hover:text-red-400 text-xs font-semibold inline-flex items-center gap-1 transition-transform duration-200 group-hover:translate-x-1 cursor-pointer"
+                      >
+                        Book Now →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
+        </section>
 
         {/* --- SERVICES SECTION --- */}
         <section
@@ -1152,586 +1452,535 @@ const ClientMain = () => {
         </section>
 
         {/* --- EVENTS SECTION --- */}
-<section
-  id="events"
-  className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
->
-  <div className="max-w-7xl mx-auto px-6">
-    <div className="text-center max-w-4xl mx-auto mb-14">
-      <h2 className="text-3xl md:text-4xl font-extrabold uppercase tracking-[0.05em] text-white mb-4">
-        Our Events
-      </h2>
-      <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
-        From intimate gatherings to large-scale productions, we’ve
-        successfully delivered hundreds of events across Metro Manila
-        and beyond.
-      </p>
-      <div className="h-[2px] w-full max-w-[630px] bg-red-600 mx-auto mt-8"></div>
-    </div>
-
-    {/* Upcoming Events */}
-    <div className="mb-14 font-['Poppins',sans-serif]">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1 h-6 bg-red-600 rounded"></div>
-        <h3 className="text-white text-xl md:text-2xl font-extrabold uppercase tracking-[0.04em]">
-          Upcoming Events
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {[
-          {
-            tag: "CONFERENCE",
-            title: "HEALTHCARE INNOVATION SUMMIT",
-            date: "June 10, 2026",
-            location: "PICC",
-          },
-          {
-            tag: "PRIVATE EVENT",
-            title: "WEDDING LIVESTREAM",
-            date: "June 25, 2026",
-            location: "Tagaytay",
-          },
-        ].map((evt, i) => (
-          <div
-            key={i}
-            className="group relative bg-[#171717] border border-[#253147] rounded-2xl p-5 md:p-6 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_30px_rgba(255,0,0,0.15)] cursor-pointer"
-          >
-            {/* Ambient hover glow */}
-            <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-red-600/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-            <span className="relative z-10 inline-flex items-center bg-red-900/40 text-red-500 text-[10px] font-bold tracking-[0.12em] px-3 py-1 rounded-full mb-3 border border-red-800/30 group-hover:border-red-600/50 group-hover:bg-red-950/60 transition-all duration-300">
-              {evt.tag}
-            </span>
-
-            {/* Title Color Shift */}
-            <h4 className="relative z-10 text-white text-lg md:text-xl font-bold uppercase tracking-[0.03em] mb-4 transition-colors duration-300 group-hover:text-red-500">
-              {evt.title}
-            </h4>
-
-            {/* Icon Scale Animations */}
-            <div className="relative z-10 space-y-2 text-neutral-300 text-xs md:text-sm">
-              <p className="flex items-center gap-2 transition-colors duration-200 group-hover:text-neutral-200">
-                <Calendar
-                  size={13}
-                  className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
-                />{" "}
-                {evt.date}
-              </p>
-              <p className="flex items-center gap-2 transition-colors duration-200 group-hover:text-neutral-200">
-                <MapPin
-                  size={13}
-                  className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
-                />{" "}
-                {evt.location}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Past Events */}
-    <div className="mb-16 font-['Poppins',sans-serif]">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-1 h-6 bg-red-600 rounded"></div>
-        <h3 className="text-white text-xl md:text-2xl font-extrabold uppercase tracking-[0.04em]">
-          Past Events
-        </h3>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          {
-            tag: "CONCERT",
-            title: "Jung Il-hoon's Art Class Concert",
-            desc: "Il-hoons first concert in the Philippines.",
-            date: "July 22, 2026",
-            location: "SM Skydome ",
-            attendees: "5,000+ attendees",
-            image: eventIlhoon,
-          },
-          {
-            tag: "CONFERENCE",
-            title: "ASEAN Tech Summit 2026",
-            desc: "Tech Summit for this year.",
-            date: "July 28-29, 2026",
-            location: "Prohibited",
-            attendees: "Prohibited",
-            image: techsummit,
-          },
-          {
-            tag: "COOPERATIVE",
-            title: "Batangas Electric Cooperative Assembly",
-            desc: "7 Location Livestreaming done for Batangas Electric Cooperative.",
-            date: "April 06, 2026",
-            location: "Different parts of Batangas",
-            attendees: "1,000+ attendees",
-            image: eventCooperative,
-          },
-          {
-            tag: "ESPORTS",
-            title: "ONLINE GAMING TOURNAMENT",
-            desc: "Multi-day esports tournament with live commentary and instant replays.",
-            date: "December 12, 2025",
-            location: "Virtual",
-            attendees: "50,000+ attendees",
-            image: eventEsports,
-          },
-          {
-            tag: "FUNDRAISER",
-            title: "CHARITY GALA FUNDRAISER",
-            desc: "Elegant charity event with live auction and entertainment.",
-            date: "November 8, 2025",
-            location: "Manila Hotel",
-            attendees: "800 attendees",
-            image: eventFundraiser,
-          },
-          {
-            tag: "CONCERT",
-            title: "MUSIC FESTIVAL",
-            desc: "Two-day music festival featuring local and international artists.",
-            date: "October 25, 2025",
-            location: "MOA Arena",
-            attendees: "12,000+ attendees",
-            image: eventConcert,
-          },
-        ].map((evt, i) => (
-          <div
-            key={i}
-            className="group relative bg-[#171717] border border-[#253147] rounded-2xl overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.32)] flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_14px_34px_rgba(255,0,0,0.18)] cursor-pointer"
-          >
-            {/* Top Image + Tag */}
-            <div>
-              <div className="relative h-44 overflow-hidden bg-neutral-900">
-                {/* Image scale zoom on card hover */}
-                <img
-                  src={evt.image}
-                  alt={evt.title}
-                  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-                />
-                {/* Overlay brightness adjustment */}
-                <div className="absolute inset-0 bg-black/45 group-hover:bg-black/30 transition-colors duration-300"></div>
-
-                <span className="absolute top-3 right-3 border border-red-600/70 bg-black/60 backdrop-blur-xs text-neutral-100 text-[10px] tracking-[0.1em] px-2.5 py-0.5 rounded-full group-hover:border-red-500 group-hover:bg-black/80 transition-all duration-300">
-                  {evt.tag}
-                </span>
-              </div>
-
-              {/* Title & Description */}
-              <div className="p-5">
-                <h4 className="text-white text-base font-bold uppercase tracking-[0.02em] leading-snug mb-2 transition-colors duration-300 group-hover:text-red-500">
-                  {evt.title}
-                </h4>
-                <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 transition-colors duration-200 group-hover:text-neutral-300">
-                  {evt.desc}
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom Meta & Icons */}
-            <div className="p-5 pt-0">
-              <div className="border-t border-[#2a3345] pt-3 space-y-1.5 text-xs md:text-sm text-neutral-300 transition-colors duration-200 group-hover:text-neutral-200">
-                <p className="flex items-center gap-2">
-                  <Calendar
-                    size={13}
-                    className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
-                  />{" "}
-                  {evt.date}
-                </p>
-                <p className="flex items-center gap-2">
-                  <MapPin
-                    size={13}
-                    className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
-                  />{" "}
-                  {evt.location}
-                </p>
-                <p className="flex items-center gap-2">
-                  <Users
-                    size={13}
-                    className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
-                  />{" "}
-                  {evt.attendees}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* CTA Card with Button Hover */}
-    <div
-      className="group relative overflow-hidden rounded-2xl border border-red-600/70 px-6 py-14 text-center transition-all duration-300 hover:border-red-500 hover:shadow-[0_10px_35px_rgba(255,0,0,0.22)]"
-      style={{
-        backgroundImage: `url(${eventsCtaBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <div className="absolute inset-0 bg-black/68 group-hover:bg-black/55 transition-colors duration-300"></div>
-
-      <div className="relative z-10 max-w-3xl mx-auto font-['Poppins',sans-serif]">
-        <h3 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-[0.05em] mb-3 transition-colors duration-300 group-hover:text-red-50">
-          Make Your Event Unforgettable
-        </h3>
-        <p className="text-neutral-300 text-xs md:text-sm leading-relaxed mb-6">
-          Let us handle your livestream production so you can focus on
-          creating amazing experiences.
-        </p>
-
-        <button
-          onClick={() =>
-            document
-              .getElementById("contact")
-              ?.scrollIntoView({ behavior: "smooth" })
-          }
-          className="bg-[#ff0000] hover:bg-red-700 text-white font-extrabold uppercase tracking-[0.12em] text-xs px-8 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg shadow-red-950/40 cursor-pointer"
+        <section
+          id="events"
+          className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
         >
-          Book Your Event
-        </button>
-      </div>
-    </div>
-  </div>
-</section>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center max-w-4xl mx-auto mb-14">
+              <h2 className="text-3xl md:text-4xl font-extrabold uppercase tracking-[0.05em] text-white mb-4">
+                Our Events
+              </h2>
+              <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
+                From intimate gatherings to large-scale productions, we’ve
+                successfully delivered hundreds of events across Metro Manila
+                and beyond.
+              </p>
+              <div className="h-[2px] w-full max-w-[630px] bg-red-600 mx-auto mt-8"></div>
+            </div>
+
+            {/* Upcoming Events */}
+            <div className="mb-14 font-['Poppins',sans-serif]">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-6 bg-red-600 rounded"></div>
+                <h3 className="text-white text-xl md:text-2xl font-extrabold uppercase tracking-[0.04em]">
+                  Upcoming Events
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {[
+                  {
+                    tag: "PRIVATE",
+                    title: "TNT BOOTCAMP",
+                    date: "October 21, 2026",
+                    location: "Restricted",
+                  },
+                  {
+                    tag: "PRIVATE",
+                    title: "TNT SAYAOKE",
+                    date: "October 26, 2026",
+                    location: "Restricted",
+                  },
+                ].map((evt, i) => (
+                  <div
+                    key={i}
+                    className="group relative bg-[#171717] border border-[#253147] rounded-2xl p-5 md:p-6 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_12px_30px_rgba(255,0,0,0.15)] cursor-pointer"
+                  >
+                    {/* Ambient hover glow */}
+                    <div className="absolute -top-12 -right-12 w-36 h-36 rounded-full bg-red-600/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    <span className="relative z-10 inline-flex items-center bg-red-900/40 text-red-500 text-[10px] font-bold tracking-[0.12em] px-3 py-1 rounded-full mb-3 border border-red-800/30 group-hover:border-red-600/50 group-hover:bg-red-950/60 transition-all duration-300">
+                      {evt.tag}
+                    </span>
+
+                    {/* Title Color Shift */}
+                    <h4 className="relative z-10 text-white text-lg md:text-xl font-bold uppercase tracking-[0.03em] mb-4 transition-colors duration-300 group-hover:text-red-500">
+                      {evt.title}
+                    </h4>
+
+                    {/* Icon Scale Animations */}
+                    <div className="relative z-10 space-y-2 text-neutral-300 text-xs md:text-sm">
+                      <p className="flex items-center gap-2 transition-colors duration-200 group-hover:text-neutral-200">
+                        <Calendar
+                          size={13}
+                          className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
+                        />{" "}
+                        {evt.date}
+                      </p>
+                      <p className="flex items-center gap-2 transition-colors duration-200 group-hover:text-neutral-200">
+                        <MapPin
+                          size={13}
+                          className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
+                        />{" "}
+                        {evt.location}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Past Events */}
+            <div className="mb-16 font-['Poppins',sans-serif]">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-1 h-6 bg-red-600 rounded"></div>
+                <h3 className="text-white text-xl md:text-2xl font-extrabold uppercase tracking-[0.04em]">
+                  Past Events
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  {
+                    tag: "CONCERT",
+                    title: "Jung Il-hoon's Art Class Concert",
+                    desc: "Il-hoons first concert in the Philippines.",
+                    date: "July 22, 2026",
+                    location: "SM Skydome ",
+                    attendees: "5,000+ attendees",
+                    image: eventIlhoon,
+                  },
+                  {
+                    tag: "CONFERENCE",
+                    title: "ASEAN Tech Summit 2026",
+                    desc: "ASEAN Tech Summit for this year.",
+                    date: "July 28-29, 2026",
+                    location: "Prohibited",
+                    attendees: "Prohibited",
+                    image: techsummit,
+                  },
+                  {
+                    tag: "ASSEMBLY",
+                    title: "Batangas Electric Cooperative Assembly",
+                    desc: "7 Location Livestreaming done for Batangas Electric Cooperative.",
+                    date: "April 06, 2026",
+                    location: "Different parts of Batangas",
+                    attendees: "1,000+ attendees",
+                    image: eventCooperative,
+                  },
+                  {
+                    tag: "ESPORTS",
+                    title: "ONLINE GAMING TOURNAMENT",
+                    desc: "Multi-day esports tournament with live commentary and instant replays.",
+                    date: "July 08, 2026",
+                    location: "UP Technohub",
+                    attendees: "100+ attendees",
+                    image: eventEsports,
+                  },
+                  {
+                    tag: "CONFERENCE",
+                    title: "LANDLITE CONFERENCE",
+                    desc: "Prohibited",
+                    date: "June 27, 2026",
+                    location: "Parañaque",
+                    attendees: "100 onsite 200 online",
+                    image: eventLandlite,
+                  },
+                  {
+                    tag: "CONVENTION",
+                    title: "KOREAN BUSINESS CONVENTION PHILIPPINES",
+                    desc: "Prohibited.",
+                    date: "June 24-26, 2026",
+                    location: "Alabang",
+                    attendees: "200 online attendees",
+                    image: eventConvention,
+                  },
+                  {
+                    tag: "AWARDING",
+                    title: "GLOBE BUSINESS PARTNERS AWARDS",
+                    desc: "Globe business partners awarding day.",
+                    date: "May 14, 2026",
+                    location: "Taguig City",
+                    attendees: "150 online attendees",
+                    image: eventGlobe,
+                  },
+                ].map((evt, i) => (
+                  <div
+                    key={i}
+                    className="group relative bg-[#171717] border border-[#253147] rounded-2xl overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.32)] flex flex-col justify-between transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_14px_34px_rgba(255,0,0,0.18)] cursor-pointer"
+                  >
+                    {/* Top Image + Tag */}
+                    <div>
+                      <div className="relative h-44 overflow-hidden bg-neutral-900">
+                        {/* Image scale zoom on card hover */}
+                        <img
+                          src={evt.image}
+                          alt={evt.title}
+                          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                        />
+                        {/* Overlay brightness adjustment */}
+                        <div className="absolute inset-0 bg-black/45 group-hover:bg-black/30 transition-colors duration-300"></div>
+
+                        <span className="absolute top-3 right-3 border border-red-600/70 bg-black/60 backdrop-blur-xs text-neutral-100 text-[10px] tracking-[0.1em] px-2.5 py-0.5 rounded-full group-hover:border-red-500 group-hover:bg-black/80 transition-all duration-300">
+                          {evt.tag}
+                        </span>
+                      </div>
+
+                      {/* Title & Description */}
+                      <div className="p-5">
+                        <h4 className="text-white text-base font-bold uppercase tracking-[0.02em] leading-snug mb-2 transition-colors duration-300 group-hover:text-red-500">
+                          {evt.title}
+                        </h4>
+                        <p className="text-neutral-400 text-xs md:text-sm leading-relaxed mb-4 transition-colors duration-200 group-hover:text-neutral-300">
+                          {evt.desc}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom Meta & Icons */}
+                    <div className="p-5 pt-0">
+                      <div className="border-t border-[#2a3345] pt-3 space-y-1.5 text-xs md:text-sm text-neutral-300 transition-colors duration-200 group-hover:text-neutral-200">
+                        <p className="flex items-center gap-2">
+                          <Calendar
+                            size={13}
+                            className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
+                          />{" "}
+                          {evt.date}
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <MapPin
+                            size={13}
+                            className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
+                          />{" "}
+                          {evt.location}
+                        </p>
+                        <p className="flex items-center gap-2">
+                          <Users
+                            size={13}
+                            className="text-red-500 shrink-0 transition-transform duration-300 group-hover:scale-125"
+                          />{" "}
+                          {evt.attendees}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA Card with Button Hover */}
+            <div
+              className="group relative overflow-hidden rounded-2xl border border-red-600/70 px-6 py-14 text-center transition-all duration-300 hover:border-red-500 hover:shadow-[0_10px_35px_rgba(255,0,0,0.22)]"
+              style={{
+                backgroundImage: `url(${eventsCtaBg})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            >
+              <div className="absolute inset-0 bg-black/68 group-hover:bg-black/55 transition-colors duration-300"></div>
+
+              <div className="relative z-10 max-w-3xl mx-auto font-['Poppins',sans-serif]">
+                <h3 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-[0.05em] mb-3 transition-colors duration-300 group-hover:text-red-50">
+                  Make Your Event Unforgettable
+                </h3>
+                <p className="text-neutral-300 text-xs md:text-sm leading-relaxed mb-6">
+                  Let us handle your livestream production so you can focus on
+                  creating amazing experiences.
+                </p>
+
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("contact")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  className="bg-[#ff0000] hover:bg-red-700 text-white font-extrabold uppercase tracking-[0.12em] text-xs px-8 py-3 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg shadow-red-950/40 cursor-pointer"
+                >
+                  Book Your Event
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* --- CONTACT SECTION --- */}
-<section
-  id="contact"
-  className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
->
-  <div className="max-w-7xl mx-auto px-6">
-    <div className="text-center max-w-4xl mx-auto mb-14">
-      <h2 className="text-3xl md:text-4xl font-extrabold uppercase tracking-[0.05em] text-white mb-4">
-        Contact Us
-      </h2>
-      <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
-        Ready to elevate your next event? Get in touch with our team of
-        experts to discuss your requirements and get a custom quote.
-      </p>
-      <div className="h-[2px] w-full max-w-[630px] bg-red-600 mx-auto mt-8"></div>
-    </div>
+        <section
+          id="contact"
+          className="py-24 bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]"
+        >
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center max-w-4xl mx-auto mb-14">
+              <h2 className="text-3xl md:text-4xl font-extrabold uppercase tracking-[0.05em] text-white mb-4">
+                Contact Us
+              </h2>
+              <p className="text-neutral-400 text-sm md:text-base leading-relaxed font-['Poppins',sans-serif]">
+                Ready to elevate your next event? Get in touch with our team of
+                experts to discuss your requirements and get a custom quote.
+              </p>
+              <div className="h-[2px] w-full max-w-[630px] bg-red-600 mx-auto mt-8"></div>
+            </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-['Poppins',sans-serif]">
-      {/* Contact Cards (Left Column) */}
-      <div className="lg:col-span-4 space-y-4">
-        {[
-          {
-            icon: MapPin,
-            title: "OUR OFFICE",
-            lines: [
-              "444 Sta Felica St.",
-              "San Antonio Homes",
-              "Culiat Quezon City 1128",
-              "Philippines",
-            ],
-          },
-          {
-            icon: Phone,
-            title: "PHONE",
-            lines: ["09936742673", "09171234567"],
-          },
-          {
-            icon: Mail,
-            title: "EMAIL",
-            lines: ["lsmevents@gmail.com", "info@livestreammanila.com"],
-          },
-          {
-            icon: Clock,
-            title: "BUSINESS HOURS",
-            lines: [
-              "Monday - Friday: 9AM - 6PM",
-              "Saturday: 9AM - 1PM",
-              "Sunday: Closed",
-            ],
-          },
-        ].map((item, i) => (
-          <div
-            key={i}
-            className="group relative bg-[#171717] border border-[#253147] rounded-2xl p-5 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_10px_26px_rgba(255,0,0,0.15)] cursor-pointer"
-          >
-            {/* Ambient Red Glow on hover */}
-            <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-red-600/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 font-['Poppins',sans-serif]">
+              {/* Contact Cards (Left Column) */}
+              <div className="lg:col-span-4 space-y-4">
+                {[
+                  {
+                    icon: MapPin,
+                    title: "OUR OFFICE",
+                    lines: [
+                      "444 Sta Felica St.",
+                      "San Antonio Homes",
+                      "Culiat Quezon City 1128",
+                      "Philippines",
+                    ],
+                  },
+                  {
+                    icon: Phone,
+                    title: "PHONE",
+                    lines: ["09655783971"],
+                  },
+                  {
+                    icon: Mail,
+                    title: "EMAIL",
+                    lines: ["deiriogeneth@gmail.com", "info@livestreammanila.com"],
+                  },
+                  {
+                    icon: Clock,
+                    title: "BUSINESS HOURS",
+                    lines: [
+                      "Monday - Friday: 9AM - 6PM",
+                      "Saturday: 9AM - 1PM",
+                      "Sunday: Closed",
+                    ],
+                  },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    className="group relative bg-[#171717] border border-[#253147] rounded-2xl p-5 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:border-red-600/60 hover:shadow-[0_10px_26px_rgba(255,0,0,0.15)] cursor-pointer"
+                  >
+                    {/* Ambient Red Glow on hover */}
+                    <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-red-600/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-            <div className="relative z-10 flex items-start gap-3.5">
-              {/* Icon Container with subtle scale on hover */}
-              <div className="w-10 h-10 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center shrink-0 mt-0.5 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
-                <item.icon size={17} className="transition-transform duration-300 group-hover:rotate-6" />
+                    <div className="relative z-10 flex items-start gap-3.5">
+                      {/* Icon Container with subtle scale on hover */}
+                      <div className="w-10 h-10 rounded-xl bg-red-600/15 text-red-500 border border-red-600/20 flex items-center justify-center shrink-0 mt-0.5 transition-all duration-300 group-hover:scale-110 group-hover:bg-red-600/30 group-hover:border-red-500/50">
+                        <item.icon size={17} className="transition-transform duration-300 group-hover:rotate-6" />
+                      </div>
+                      <div>
+                        {/* Title Color Shift */}
+                        <h3 className="text-white text-sm md:text-base font-bold uppercase tracking-[0.03em] mb-1 transition-colors duration-300 group-hover:text-red-500">
+                          {item.title}
+                        </h3>
+                        <div className="space-y-0.5">
+                          {item.lines.map((line, idx) => (
+                            <p
+                              key={idx}
+                              className="text-neutral-400 text-xs md:text-sm leading-relaxed transition-colors duration-200 group-hover:text-neutral-300"
+                            >
+                              {line}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                {/* Title Color Shift */}
-                <h3 className="text-white text-sm md:text-base font-bold uppercase tracking-[0.03em] mb-1 transition-colors duration-300 group-hover:text-red-500">
-                  {item.title}
-                </h3>
-                <div className="space-y-0.5">
-                  {item.lines.map((line, idx) => (
-                    <p
-                      key={idx}
-                      className="text-neutral-400 text-xs md:text-sm leading-relaxed transition-colors duration-200 group-hover:text-neutral-300"
-                    >
-                      {line}
-                    </p>
-                  ))}
+
+              {/* Form Container (Right Column) */}
+              <div className="lg:col-span-8 group/form relative overflow-hidden bg-[#171717] border border-[#253147] rounded-2xl p-6 md:p-8 transition-all duration-300 hover:border-red-600/40 hover:shadow-[0_14px_34px_rgba(0,0,0,0.4)]">
+                {/* Ambient Top Glow */}
+                <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-red-700/12 blur-2xl transition-all duration-500 group-hover/form:bg-red-700/20 pointer-events-none" />
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-600/30 text-red-500 flex items-center justify-center">
+                      <MessageSquare size={18} />
+                    </div>
+                    <h3 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-[0.03em]">
+                      Send Us a Message
+                    </h3>
+                  </div>
+
+                  <div className="h-px bg-[#283247] mb-6"></div>
+
+                  {/* Sends the message to the backend, which emails it to deiriogeneth@gmail.com */}
+                  <ContactForm />
                 </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </section>
 
-      {/* Form Container (Right Column) */}
-      <div className="lg:col-span-8 group/form relative overflow-hidden bg-[#171717] border border-[#253147] rounded-2xl p-6 md:p-8 transition-all duration-300 hover:border-red-600/40 hover:shadow-[0_14px_34px_rgba(0,0,0,0.4)]">
-        {/* Ambient Top Glow */}
-        <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-red-700/12 blur-2xl transition-all duration-500 group-hover/form:bg-red-700/20 pointer-events-none" />
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-600/30 text-red-500 flex items-center justify-center">
-              <MessageSquare size={18} />
-            </div>
-            <h3 className="text-white text-2xl md:text-3xl font-extrabold uppercase tracking-[0.03em]">
-              Send Us a Message
-            </h3>
-          </div>
-
-          <div className="h-px bg-[#283247] mb-6"></div>
-
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-            }}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                  First Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Juan"
-                  className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                  Last Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Dela Cruz"
-                  className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  placeholder="juan@example.com"
-                  className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  placeholder="+63 912 345 6789"
-                  className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                Event Type
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Corporate Conference, Concert, Wedding"
-                className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] tracking-[0.12em] text-neutral-400 uppercase mb-2">
-                Message
-              </label>
-              <textarea
-                rows={4}
-                placeholder="Tell us about your event..."
-                className="w-full bg-black border border-[#2a3345] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all duration-200 resize-none"
-              />
-            </div>
-
-            {/* Submit Button with Hover Lift and Arrow Movement */}
-            <button
-              type="submit"
-              className="group/btn w-full bg-[#ff0000] hover:bg-red-700 text-white font-extrabold uppercase tracking-[0.12em] text-xs py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-950/30 hover:shadow-red-700/40 hover:-translate-y-0.5"
-            >
-              <span>Send Message</span>
-              <Send
-                size={15}
-                className="transition-transform duration-200 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-0.5"
-              />
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-       {/* --- E-COMMERCE CATEGORY SHOPPING MODAL (EXACT 100% ZOOM FIT) --- */}
-{activeCategoryModal && equipmentCatalogs[activeCategoryModal] && (
-  <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
-    <div className="w-full max-w-6xl h-[92vh] max-h-[850px] bg-[#0c1017] border border-[#20293a] rounded-2xl overflow-hidden relative font-['Poppins',sans-serif] shadow-2xl text-white flex flex-col">
-      
-      {/* 1. Header (Fixed, hindi naiipit) */}
-      <div className="px-6 py-4 border-b border-[#1c2436] flex items-center justify-between bg-[#0e131d] shrink-0">
-        <div>
-          <button
-            type="button"
-            onClick={() => setActiveCategoryModal(null)}
-            className="text-[11px] font-semibold text-neutral-400 hover:text-white uppercase tracking-wider mb-1 flex items-center gap-1.5 cursor-pointer transition"
-          >
-            ← BACK TO CATEGORIES
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-red-600"></span>
-            <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide text-white">
-              {equipmentCatalogs[activeCategoryModal].title}
-            </h2>
-          </div>
-          <p className="text-neutral-400 text-xs mt-0.5">
-            {equipmentCatalogs[activeCategoryModal].subtitle}
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setActiveCategoryModal(null)}
-          className="w-8 h-8 rounded-full border border-neutral-700 bg-black/40 text-neutral-300 hover:text-white hover:border-red-500 transition flex items-center justify-center cursor-pointer text-xs"
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* 2. Scrollable Body: Ito lang ang mag-iiscroll sa 100% zoom */}
-      <div className="p-4 md:p-6 overflow-y-auto flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-max">
-        {equipmentCatalogs[activeCategoryModal].items.map((prod, idx) => {
-          const isInCart = cart.some((i) => i.name === prod.name);
-          const isCameras = prod.name.toLowerCase() === "cameras";
-
-          return (
-            <div
-              key={idx}
-              className={`bg-[#121722] border rounded-xl overflow-hidden flex flex-col justify-between transition-all duration-200 ${
-                isInCart
-                  ? "border-red-600 shadow-[0_0_14px_rgba(255,0,0,0.3)] ring-1 ring-red-600"
-                  : "border-[#20293a] hover:border-neutral-600"
-              }`}
-            >
-              {/* Product Image */}
-              <div className="relative h-32 w-full bg-black overflow-hidden shrink-0">
-                <img
-                  src={prod.image}
-                  alt={prod.name}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#121722] via-transparent to-black/20" />
-
-                {isCameras && (
-                  <span className="absolute top-2 right-2 bg-red-600 text-white font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded">
-                    4 MODELS
-                  </span>
-                )}
-              </div>
-
-              {/* Text & Action Area */}
-              <div className="p-3.5 flex flex-col flex-1 justify-between bg-[#121722]">
+        {/* --- E-COMMERCE CATEGORY SHOPPING MODAL --- */}
+        {activeCategoryModal && equipmentCatalogs[activeCategoryModal] && (
+          <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+            <div className="w-full max-w-6xl h-[92vh] max-h-[850px] bg-[#0c1017] border border-[#20293a] rounded-2xl overflow-hidden relative font-['Poppins',sans-serif] shadow-2xl text-white flex flex-col">
+              
+              {/* 1. Header (Fixed) */}
+              <div className="px-6 py-4 border-b border-[#1c2436] flex items-center justify-between bg-[#0e131d] shrink-0">
                 <div>
-                  <h4 className="font-extrabold uppercase text-white text-[12px] tracking-wide mb-1 truncate">
-                    {prod.name}
-                  </h4>
-                  <p className="text-neutral-400 text-[11px] leading-relaxed line-clamp-2 min-h-[32px]">
-                    {prod.desc}
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategoryModal(null)}
+                    className="text-[11px] font-semibold text-neutral-400 hover:text-white uppercase tracking-wider mb-1 flex items-center gap-1.5 cursor-pointer transition"
+                  >
+                    ← BACK TO CATEGORIES
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                    <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide text-white">
+                      {equipmentCatalogs[activeCategoryModal].title}
+                    </h2>
+                  </div>
+                  <p className="text-neutral-400 text-xs mt-0.5">
+                    {equipmentCatalogs[activeCategoryModal].subtitle}
                   </p>
                 </div>
 
-                <div className="mt-3">
-                  <span className="text-red-500 font-extrabold text-[12px] tracking-wide block mb-2.5">
-                    {prod.price}
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryModal(null)}
+                  className="w-8 h-8 rounded-full border border-neutral-700 bg-black/40 text-neutral-300 hover:text-white hover:border-red-500 transition flex items-center justify-center cursor-pointer text-xs"
+                >
+                  ✕
+                </button>
+              </div>
 
+              {/* 2. Scrollable Body */}
+              <div className="p-4 md:p-6 overflow-y-auto flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-max">
+                {equipmentCatalogs[activeCategoryModal].items.map((prod, idx) => {
+                  const isInCart = cart.some((i) => i.name === prod.name);
+                  const isCameras = prod.name.toLowerCase() === "cameras";
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`bg-[#121722] border rounded-xl overflow-hidden flex flex-col justify-between transition-all duration-200 ${
+                        isInCart
+                          ? "border-red-600 shadow-[0_0_14px_rgba(255,0,0,0.3)] ring-1 ring-red-600"
+                          : "border-[#20293a] hover:border-neutral-600"
+                      }`}
+                    >
+                      {/* Product Image */}
+                      <div className="relative h-32 w-full bg-black overflow-hidden shrink-0">
+                        <img
+                          src={prod.image}
+                          alt={prod.name}
+                          className="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setPreviewImage(prod.image)}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#121722] via-transparent to-black/20 pointer-events-none" />
+
+                        {isCameras && (
+                          <span className="absolute top-2 right-2 bg-red-600 text-white font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded pointer-events-none">
+                            4 MODELS
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Text & Action Area */}
+                      <div className="p-3.5 flex flex-col flex-1 justify-between bg-[#121722]">
+                        <div>
+                          <h4 className="font-extrabold uppercase text-white text-[12px] tracking-wide mb-1 truncate" title={prod.name}>
+                            {prod.name}
+                          </h4>
+
+                          {/* Expandable Description */}
+                          <p className={`text-neutral-400 text-[11px] leading-relaxed transition-all duration-200 ${
+                            expandedDesc[prod.name] ? "" : "line-clamp-2"
+                          }`}>
+                            {prod.desc}
+                          </p>
+
+                          {/* See more / See less button */}
+                          {prod.desc && prod.desc.length > 70 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedDesc((prev) => ({
+                                  ...prev,
+                                  [prod.name]: !prev[prod.name],
+                                }));
+                              }}
+                              className="text-[10px] font-bold text-red-500 hover:text-red-400 mt-1 cursor-pointer transition-colors block"
+                            >
+                              {expandedDesc[prod.name] ? "See less ↑" : "See more ↓"}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-3">
+                          <span className="text-red-500 font-extrabold text-[12px] tracking-wide block mb-2.5">
+                            {prod.price}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isInCart) {
+                                removeFromCart(prod.name);
+                              } else {
+                                addToCart(prod);
+                              }
+                            }}
+                            className={`w-full py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                              isCameras
+                                ? "border border-red-900/60 text-red-500 bg-red-950/20 hover:bg-red-900/30"
+                                : isInCart
+                                ? "bg-red-600 text-white shadow-md shadow-red-600/30"
+                                : "bg-[#161c28] hover:bg-[#1d2536] text-neutral-300 hover:text-white border border-[#242e42]"
+                            }`}
+                          >
+                            {isCameras
+                              ? "VIEW CAMERA OPTIONS →"
+                              : isInCart
+                              ? "ADDED TO CART ✓"
+                              : "+ ADD TO CART"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 3. Footer Bar (Fixed) */}
+              <div className="px-6 py-3.5 border-t border-[#1c2436] bg-[#0e131d] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <div className="text-xs text-neutral-300">
+                  <span className="text-red-500 font-bold">{cart.length}</span> item(s) selected in cart
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isInCart) {
-                        removeFromCart(prod.name);
-                      } else {
-                        addToCart(prod);
-                      }
-                    }}
-                    className={`w-full py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
-                      isCameras
-                        ? "border border-red-900/60 text-red-500 bg-red-950/20 hover:bg-red-900/30"
-                        : isInCart
-                        ? "bg-red-600 text-white shadow-md shadow-red-600/30"
-                        : "bg-[#161c28] hover:bg-[#1d2536] text-neutral-300 hover:text-white border border-[#242e42]"
+                    onClick={() => setActiveCategoryModal(null)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:text-white transition text-xs font-bold uppercase cursor-pointer"
+                  >
+                    CONTINUE BROWSING
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cart.length === 0}
+                    onClick={proceedToBooking}
+                    className={`w-full sm:w-auto px-7 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer ${
+                      cart.length > 0
+                        ? "bg-[#ff0000] hover:bg-red-700 text-white shadow-lg shadow-red-600/30"
+                        : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700"
                     }`}
                   >
-                    {isCameras
-                      ? "VIEW CAMERA OPTIONS →"
-                      : isInCart
-                      ? "ADDED TO CART ✓"
-                      : "+ ADD TO CART"}
+                    PROCEED TO BOOKING →
                   </button>
                 </div>
               </div>
+
             </div>
-          );
-        })}
-      </div>
+          </div>
+        )}
 
-      {/* 3. Footer Bar (Fixed sa bottom, laging litaw sa 100% zoom) */}
-      <div className="px-6 py-3.5 border-t border-[#1c2436] bg-[#0e131d] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-        <div className="text-xs text-neutral-300">
-          <span className="text-red-500 font-bold">{cart.length}</span> item(s) selected in cart
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setActiveCategoryModal(null)}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-neutral-700 text-neutral-300 hover:text-white transition text-xs font-bold uppercase cursor-pointer"
-          >
-            CONTINUE BROWSING
-          </button>
-          <button
-            type="button"
-            disabled={cart.length === 0}
-            onClick={proceedToBooking}
-            className={`w-full sm:w-auto px-7 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-colors cursor-pointer ${
-              cart.length > 0
-                ? "bg-[#ff0000] hover:bg-red-700 text-white shadow-lg shadow-red-600/30"
-                : "bg-neutral-800 text-neutral-500 cursor-not-allowed border border-neutral-700"
-            }`}
-          >
-            PROCEED TO BOOKING →
-          </button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-)}
         {/* --- SAMPLE MODAL --- */}
         {openSample && (
           <div className="fixed inset-0 z-[90] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1829,6 +2078,29 @@ const ClientMain = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- IMAGE PREVIEW --- */}
+        {previewImage && (
+          <div 
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div className="relative flex items-center justify-center max-w-5xl w-full h-full">
+              <button 
+                className="absolute top-4 right-4 md:top-8 md:right-8 text-white text-4xl hover:text-red-500 transition-colors z-10 cursor-pointer"
+                onClick={() => setPreviewImage(null)}
+              >
+                &times;
+              </button>
+              <img 
+                src={previewImage} 
+                alt="Preview" 
+                className="max-w-full max-h-[90vh] object-contain rounded-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()} 
+              />
             </div>
           </div>
         )}
@@ -1982,11 +2254,6 @@ const ClientMain = () => {
           </div>
         )}
 
-        {/* Floating Chat Button */}
-        <button className="fixed bottom-8 right-8 bg-[#ff0000] hover:bg-red-700 text-white p-4 rounded-full shadow-lg z-50 transition-colors cursor-pointer">
-          <MessageSquare size={24} />
-        </button>
-
         {/* --- FOOTER --- */}
         <footer className="bg-black border-t border-neutral-900 font-['Montserrat',sans-serif]">
           <div className="max-w-7xl mx-auto px-6 pt-14">
@@ -2051,8 +2318,8 @@ const ClientMain = () => {
                   <p>
                     444 Sta Felica St. San Antonio Homes Culiat Quezon City 1128
                   </p>
-                  <p>09936742673</p>
-                  <p>lsmevents@gmail.com</p>
+                  <p>09655783971</p>
+                  <p>deiriogeneth@gmail.com</p>
                 </div>
               </div>
             </div>

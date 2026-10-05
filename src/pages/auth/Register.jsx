@@ -4,23 +4,32 @@ import { User, Mail, Phone, Building, Check, X, Eye, EyeOff, FileText, DollarSig
 import { supabase } from '../../supabaseClient';
 import heroImage from '../../assets/hero.png';
 
-const API = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-// Asks the FastAPI backend to text a 6-digit code (UniSMS) to the given phone
-const sendOtp = async (phone) => {
-  const res = await fetch(`${API}/otp/send`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(
-      typeof data.detail === 'string' ? data.detail : 'Could not send the code. Please try again.'
-    );
+// Every self-registered account is a client. Event Managers are created/promoted by an admin.
+const DEFAULT_ROLE = 'Client';
+
+// Calls the FastAPI OTP endpoints and returns { ok, data } with FastAPI's error text in data.detail.
+async function postOtp(path, body) {
+  try {
+    const res = await fetch(`${API_URL}/otp/${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  } catch {
+    return { ok: false, data: { detail: 'Cannot reach the server. Is the backend running?' } };
   }
-  return data;
-};
+}
+
+const inputClass =
+  'w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600';
+const passwordInputClass =
+  'w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600';
+const eyeButtonClass =
+  'absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white focus:outline-none';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -32,20 +41,28 @@ const RegisterPage = () => {
     phone: '',
     company: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  const passwordRequirements = [
+    { label: 'At least 6 characters', valid: formData.password.length >= 6 },
+    { label: 'Uppercase & lowercase letters', valid: /[A-Z]/.test(formData.password) && /[a-z]/.test(formData.password) },
+    { label: 'At least one number', valid: /[0-9]/.test(formData.password) },
+    { label: 'At least one symbol (e.g., @$!%*)', valid: /[^A-Za-z0-9]/.test(formData.password) },
+  ];
+
+  const passwordsMatch = formData.password === formData.confirmPassword;
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -55,7 +72,7 @@ const RegisterPage = () => {
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!passwordsMatch) {
       setMessage('Passwords do not match!');
       return;
     }
@@ -63,8 +80,6 @@ const RegisterPage = () => {
     setLoading(true);
     setMessage('');
 
-    // 1. Create the Supabase Auth account.
-    // Public registration is always a client. Staff and admin accounts are created by an admin.
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -74,9 +89,9 @@ const RegisterPage = () => {
           last_name: formData.lastName,
           phone: formData.phone,
           company: formData.company,
-          role: 'client'
-        }
-      }
+          role: DEFAULT_ROLE,
+        },
+      },
     });
 
     if (error) {
@@ -85,32 +100,29 @@ const RegisterPage = () => {
       return;
     }
 
-    // If the email is already registered, Supabase returns an empty identities array instead of an error
+    // If the user already exists, Supabase returns an empty identities array instead of an error.
     if (data?.user?.identities && data.user.identities.length === 0) {
       setMessage('An account with this email address already exists. Please log in or use a different email.');
       setLoading(false);
       return;
     }
 
-    // 2. Send the SMS OTP through the FastAPI backend (UniSMS)
-    try {
-      await sendOtp(formData.phone);
-    } catch (err) {
-      console.error('OTP send failed:', err);
-      setMessage(`SMS Error: ${err.message}`);
+    // Send SMS OTP before redirecting.
+    const { ok: otpOk, data: otpData } = await postOtp('send', { phone: formData.phone });
+
+    if (!otpOk) {
+      setMessage(`SMS Error: ${otpData?.detail || 'Unknown error'}`);
       setLoading(false);
       return;
     }
 
-    // 3. Go to the OTP verification page
     navigate('/verify-otp', { state: { email: formData.email, phone: formData.phone } });
     setLoading(false);
   };
 
   return (
     <div className="flex min-h-screen bg-black text-white font-sans relative">
-
-      {/* --- LEFT SIDE: Branding and Image Collage --- */}
+      {/* --- LEFT SIDE: Branding --- */}
       <div
         className="hidden lg:flex lg:w-1/2 relative bg-cover bg-center"
         style={{ backgroundImage: `url(${heroImage})` }}
@@ -129,11 +141,8 @@ const RegisterPage = () => {
 
       {/* --- RIGHT SIDE: Registration Form --- */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-8 relative">
-
         <div className="w-full max-w-2xl bg-neutral-950 p-8 md:p-10 rounded-3xl border border-neutral-800 shadow-2xl">
-
           <div className="mb-8 text-center flex flex-col items-center">
-            {/* LSM Logo Placeholder */}
             <div className="w-12 h-12 bg-black flex items-center justify-center rounded border border-neutral-700 mb-4">
               <span className="text-red-600 font-bold text-xl">L</span>
             </div>
@@ -142,95 +151,53 @@ const RegisterPage = () => {
           </div>
 
           <form onSubmit={handleRegister} className="space-y-5">
-
-            {/* Grid for First & Last Name */}
+            {/* First & Last Name */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">First Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="Juan"
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
-                    required
-                  />
+                  <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Juan" className={inputClass} required />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Last Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="Dela Cruz"
-                    className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
-                    required
-                  />
+                  <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Dela Cruz" className={inputClass} required />
                 </div>
               </div>
             </div>
 
-            {/* Email Address */}
+            {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-neutral-300">Active Email Address <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Mail className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="juandelacruz@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
-                  required
-                />
+                <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="juandelacruz@example.com" className={inputClass} required />
               </div>
             </div>
 
-            {/* Phone Number */}
+            {/* Phone */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-neutral-300">Active Phone Number <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Phone className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+63 912 345 6789"
-                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
-                  required
-                />
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+63 912 345 6789" className={inputClass} required />
               </div>
             </div>
 
-            {/* Company */}
+            {/* Company (full width now that Role is gone) */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-neutral-300">Company <span className="text-neutral-500">(Optional)</span></label>
               <div className="relative">
                 <Building className="absolute left-4 top-3.5 h-4 w-4 text-neutral-500" />
-                <input
-                  type="text"
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  placeholder="Your Company"
-                  className="w-full pl-11 pr-4 py-3 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
-                />
+                <input type="text" name="company" value={formData.company} onChange={handleChange} placeholder="Your Company" className={inputClass} />
               </div>
             </div>
 
-            {/* Grid for Passwords */}
+            {/* Passwords */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-              {/* Password with eye toggle */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
@@ -240,29 +207,22 @@ const RegisterPage = () => {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Create password"
-                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    className={passwordInputClass}
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white focus:outline-none"
-                  >
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className={eyeButtonClass}>
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
 
-                {/* Password requirements (appears while typing) */}
                 {formData.password && (
                   <div className="mt-3 p-3 bg-[#0a0a0a] rounded-xl border border-neutral-800/50 space-y-2">
                     <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mb-2">Password Requirements</p>
-                    {[
-                      { label: 'At least 6 characters', valid: formData.password.length >= 6 },
-                      { label: 'Uppercase & lowercase letters', valid: /[A-Z]/.test(formData.password) && /[a-z]/.test(formData.password) },
-                      { label: 'At least one number', valid: /[0-9]/.test(formData.password) },
-                      { label: 'At least one symbol (e.g., @$!%*)', valid: /[^A-Za-z0-9]/.test(formData.password) }
-                    ].map((req, i) => (
-                      <div key={i} className={`flex items-center text-[11px] font-medium transition-colors duration-300 ${req.valid ? 'text-green-500' : 'text-neutral-500'}`}>
+                    {passwordRequirements.map((req) => (
+                      <div
+                        key={req.label}
+                        className={`flex items-center text-[11px] font-medium transition-colors duration-300 ${req.valid ? 'text-green-500' : 'text-neutral-500'}`}
+                      >
                         {req.valid ? <Check className="w-3.5 h-3.5 mr-2" /> : <X className="w-3.5 h-3.5 mr-2" />}
                         {req.label}
                       </div>
@@ -271,7 +231,6 @@ const RegisterPage = () => {
                 )}
               </div>
 
-              {/* Confirm password with eye toggle */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-neutral-300">Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
@@ -281,22 +240,17 @@ const RegisterPage = () => {
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     placeholder="Confirm password"
-                    className="w-full px-4 py-3 pr-10 bg-black border border-neutral-800 rounded-xl focus:outline-none focus:border-red-600 transition-colors text-sm text-white placeholder-neutral-600"
+                    className={passwordInputClass}
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-neutral-500 hover:text-white focus:outline-none"
-                  >
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className={eyeButtonClass}>
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
 
-                {/* Password match feedback */}
                 {formData.confirmPassword && (
-                  <div className={`mt-3 flex items-center text-xs font-medium ${formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
-                    {formData.password === formData.confirmPassword ? (
+                  <div className={`mt-3 flex items-center text-xs font-medium ${passwordsMatch ? 'text-green-500' : 'text-red-500'}`}>
+                    {passwordsMatch ? (
                       <><Check className="w-4 h-4 mr-1.5" /> Passwords match</>
                     ) : (
                       <><X className="w-4 h-4 mr-1.5" /> Passwords do not match</>
@@ -306,7 +260,7 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Terms and Conditions */}
+            {/* Terms checkbox */}
             <div className="flex items-start space-x-3 bg-black border border-neutral-800 p-4 rounded-xl mt-2">
               <input
                 type="checkbox"
@@ -322,14 +276,13 @@ const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Message box */}
+            {/* Message */}
             {message && (
-              <div className={`text-sm text-center font-medium p-3 rounded-xl border ${message.includes('Success') ? 'bg-green-900/20 border-green-600/50 text-green-400' : 'bg-red-900/20 border-red-600/50 text-red-500'}`}>
+              <div className="text-sm text-center font-medium p-3 rounded-xl border bg-red-900/20 border-red-600/50 text-red-500">
                 {message}
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -337,15 +290,12 @@ const RegisterPage = () => {
             >
               {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
             </button>
-
           </form>
 
-          {/* Login Link */}
           <div className="mt-8 text-center text-xs text-neutral-400">
             Already have an account?{' '}
             <Link to="/login" className="text-red-600 hover:text-red-500 font-medium transition-colors">Sign In</Link>
           </div>
-
         </div>
       </div>
 
@@ -353,8 +303,6 @@ const RegisterPage = () => {
       {showTermsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#111111] border border-neutral-800 w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
-
-            {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-neutral-800">
               <div className="flex items-center gap-3">
                 <FileText className="text-red-600 w-6 h-6" />
@@ -365,9 +313,7 @@ const RegisterPage = () => {
               </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="p-6 overflow-y-auto space-y-6 text-sm text-neutral-300">
-
               <div className="bg-[#1e293b]/20 border border-[#334155] text-[#94a3b8] p-4 rounded-xl">
                 Welcome to <span className="font-bold text-white">StreamSync</span> - Livestream Manila's booking platform. Please read these terms carefully before creating your account.
               </div>
@@ -490,10 +436,8 @@ const RegisterPage = () => {
                   <li>Notify us immediately if you suspect unauthorized access to your account.</li>
                 </ul>
               </div>
-
             </div>
 
-            {/* Footer */}
             <div className="p-6 border-t border-neutral-800 flex items-center justify-between bg-[#0a0a0a] rounded-b-2xl">
               <span className="text-xs text-neutral-500">Last updated: June 7, 2026 • Livestream Manila</span>
               <button
@@ -506,11 +450,9 @@ const RegisterPage = () => {
                 <CheckCircle2 className="w-4 h-4" /> I AGREE TO TERMS
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };
