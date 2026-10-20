@@ -11,7 +11,12 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Archive,
+  Ban,
 } from "lucide-react";
+import Pagination from "../../components/Pagination";
+
+const PAGE_SIZE = 10;
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -68,6 +73,8 @@ const UserAccounts = () => {
   const [busy, setBusy] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState("ALL");
+  const [showArchived, setShowArchived] = useState(false);
+  const [page, setPage] = useState(1);
   const [toast, setToast] = useState(null);
 
   // Edit Modal State
@@ -88,7 +95,7 @@ const UserAccounts = () => {
   // Real accounts from the backend (users table + Supabase Auth)
   const fetchUsers = async () => {
     try {
-      const data = await authFetch("/admin/users");
+      const data = await authFetch(`/admin/users?archived=${showArchived}`);
       setUsers(
         data.map((u) => ({
           ...u,
@@ -107,8 +114,46 @@ const UserAccounts = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchUsers();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchived]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterRole, showArchived]);
+
+  // Client policy actions
+  const handleArchive = async (user, archived) => {
+    if (archived && !window.confirm(`Archive ${user.name}? They will be hidden from this list and can't book until restored. Their bookings and payments are kept.`)) return;
+    setBusy(true);
+    try {
+      await authFetch(`/admin/users/${user.id}/archive`, {
+        method: "PATCH",
+        body: JSON.stringify({ archived }),
+      });
+      triggerToast(archived ? `${user.name} archived` : `${user.name} restored`);
+      await fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleUnblacklist = async (user) => {
+    if (!window.confirm(`Lift the blacklist for ${user.name}? Their cancellation count resets to 0 (past cancellations stay in the logs).`)) return;
+    setBusy(true);
+    try {
+      await authFetch(`/admin/users/${user.id}/unblacklist`, { method: "POST" });
+      triggerToast(`${user.name} can book again`);
+      await fetchUsers();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const openEdit = (user) => {
     setModalError("");
@@ -183,6 +228,7 @@ const UserAccounts = () => {
     const matchesRole = filterRole === "ALL" || u.role === filterRole;
     return matchesSearch && matchesRole;
   });
+  const pagedUsers = filteredUsers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // Recent activity built from real account data (sign-ups and last sign-ins)
   const activity = useMemo(() => {
@@ -313,6 +359,15 @@ const UserAccounts = () => {
               <option value="ADMIN">ADMINS</option>
             </select>
           </div>
+          <label className="flex items-center gap-2 text-[11px] text-neutral-400 cursor-pointer select-none whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="accent-red-600"
+            />
+            Archived clients
+          </label>
         </div>
 
         {/* Users Table */}
@@ -326,16 +381,17 @@ const UserAccounts = () => {
                 <th className="pb-4 px-2">JOINED</th>
                 <th className="pb-4 px-2">LAST LOGIN</th>
                 <th className="pb-4 px-2 text-center">BOOKINGS</th>
+                <th className="pb-4 px-2 text-center">CANCELLATIONS</th>
                 <th className="pb-4 px-2 text-right">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-800/50">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-neutral-500 text-xs uppercase font-bold">Loading accounts...</td>
+                  <td colSpan="8" className="py-8 text-center text-neutral-500 text-xs uppercase font-bold">Loading accounts...</td>
                 </tr>
               ) : filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
+                pagedUsers.map((user) => (
                   <tr key={user.id} className="text-neutral-300 hover:bg-[#161616] transition-colors group">
                     <td className="py-4 px-2">
                       <div className="flex items-center gap-3">
@@ -352,13 +408,59 @@ const UserAccounts = () => {
                       </div>
                     </td>
                     <td className="py-4 px-2">{renderRoleBadge(user.role)}</td>
-                    <td className="py-4 px-2">{renderStatusBadge(user.status)}</td>
+                    <td className="py-4 px-2">
+                      <div className="flex flex-col items-start gap-1">
+                        {renderStatusBadge(user.status)}
+                        {user.blacklisted && (
+                          <span
+                            title={user.blacklistReason || "Reached the cancellation limit"}
+                            className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-full bg-red-950/40 text-red-400 border border-red-900/60"
+                          >
+                            Blacklisted
+                          </span>
+                        )}
+                        {user.archived && (
+                          <span className="px-2.5 py-1 text-[10px] font-bold uppercase rounded-full bg-neutral-800 text-neutral-400">
+                            Archived
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="py-4 px-2 text-xs text-neutral-400">{user.joined}</td>
                     <td className="py-4 px-2 text-xs text-neutral-400">{user.lastLogin}</td>
                     <td className="py-4 px-2 text-center font-bold text-white">
                       {user.bookings !== null ? user.bookings : <span className="text-neutral-600">--</span>}
                     </td>
-                    <td className="py-4 px-2 text-right">
+                    <td className="py-4 px-2 text-center font-bold">
+                      {user.cancellations !== null && user.cancellations !== undefined ? (
+                        <span className={user.cancellations >= 3 ? "text-red-500" : user.cancellations > 0 ? "text-amber-500" : "text-white"}>
+                          {user.cancellations}/3
+                        </span>
+                      ) : (
+                        <span className="text-neutral-600">--</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-2 text-right whitespace-nowrap">
+                      {user.blacklisted && (
+                        <button
+                          onClick={() => handleUnblacklist(user)}
+                          disabled={busy}
+                          title="Lift blacklist"
+                          className="text-amber-500 hover:text-amber-400 p-1 transition-colors"
+                        >
+                          <Ban size={14} />
+                        </button>
+                      )}
+                      {user.role === "CLIENT" && (
+                        <button
+                          onClick={() => handleArchive(user, !user.archived)}
+                          disabled={busy}
+                          title={user.archived ? "Restore client" : "Archive client"}
+                          className="text-neutral-400 hover:text-white p-1 transition-colors"
+                        >
+                          <Archive size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={() => openEdit(user)}
                         title="Edit account"
@@ -371,11 +473,14 @@ const UserAccounts = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-neutral-500 text-xs uppercase font-bold">No user accounts found</td>
+                  <td colSpan="8" className="py-8 text-center text-neutral-500 text-xs uppercase font-bold">No user accounts found</td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4">
+          <Pagination page={page} pageSize={PAGE_SIZE} total={filteredUsers.length} onChange={setPage} label="accounts" />
         </div>
       </div>
 

@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = (import.meta.env?.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 const StaffDeployment = () => {
   const [events, setEvents] = useState([]);
@@ -23,6 +23,7 @@ const StaffDeployment = () => {
   // Suggest/Assign modal state
   const [modalEvent, setModalEvent] = useState(null); // the event object, or null
   const [suggestions, setSuggestions] = useState([]);
+  const [equipmentWarnings, setEquipmentWarnings] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
   const [selectedStaffIds, setSelectedStaffIds] = useState([]);
@@ -102,6 +103,7 @@ const StaffDeployment = () => {
 
   const openAssignModal = async (event) => {
     setModalEvent(event);
+    setEquipmentWarnings([]);
     setSuggestions([]);
     setSelectedStaffIds([]);
     setModalError(null);
@@ -113,6 +115,14 @@ const StaffDeployment = () => {
       setModalLoading(false);
       return;
     }
+
+    // Warn about unavailable / frequently damaged equipment on this event (doesn't block).
+    fetch(`${API_URL}/bookings/${event.id}/equipment-warnings`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : { warnings: [] }))
+      .then((d) => setEquipmentWarnings(d.warnings || []))
+      .catch(() => setEquipmentWarnings([]));
 
     try {
       const response = await fetch(
@@ -403,6 +413,17 @@ const StaffDeployment = () => {
                 <X size={16} />
               </button>
             </div>
+
+            {equipmentWarnings.length > 0 && (
+              <div className="border border-amber-800/50 bg-amber-950/20 rounded-xl p-3 text-[11px] text-amber-400 space-y-1">
+                <p className="font-black uppercase tracking-widest text-[10px] flex items-center gap-1.5">
+                  <AlertCircle size={12} /> Equipment warning
+                </p>
+                {equipmentWarnings.map((w, i) => (
+                  <p key={i}>{w}</p>
+                ))}
+              </div>
+            )}
 
             {modalLoading && (
               <p className="text-xs text-neutral-500 py-6 text-center">Loading suggestions...</p>

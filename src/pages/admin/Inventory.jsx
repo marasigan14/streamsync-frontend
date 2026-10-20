@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "../../supabaseClient";
+import { apiFetch } from "../../lib/api";
+import Pagination from "../../components/Pagination";
+import LostItemsPanel from "../../components/LostItemsPanel";
+import { toInventoryRow, AvailabilityCell, StatusCell } from "../../components/EquipmentStatus";
 import {
   Search,
   Plus,
@@ -16,28 +20,6 @@ import {
    CONFIG & HELPERS
 ------------------------------------------------------------------- */
 const API_URL = import.meta.env?.VITE_API_URL || "http://127.0.0.1:8000";
-
-// equipment.status enum -> badge label + color
-const EQUIPMENT_STATUS = {
-  available: { label: "AVAILABLE", color: "emerald" },
-  in_use: { label: "DEPLOYED", color: "blue" },
-  under_maintenance: { label: "MAINTENANCE", color: "amber" },
-  retired: { label: "RETIRED", color: "neutral" },
-};
-
-// Add-equipment form value -> equipment.status enum
-const FORM_STATUS_TO_ENUM = {
-  AVAILABLE: "available",
-  DEPLOYED: "in_use",
-  MAINTENANCE: "under_maintenance",
-};
-
-const STATUS_BADGE_STYLES = {
-  emerald: "bg-emerald-950/40 text-emerald-400 border-emerald-800/50",
-  blue: "bg-blue-950/40 text-blue-400 border-blue-800/50",
-  amber: "bg-amber-950/40 text-amber-400 border-amber-800/50",
-  neutral: "bg-neutral-900/60 text-neutral-400 border-neutral-700/50",
-};
 
 const CONDITION_BADGE_STYLES = {
   GOOD: "bg-emerald-950/40 text-emerald-400 border-emerald-800/50",
@@ -72,6 +54,8 @@ const formatLogDate = (value) => {
   };
 };
 
+const PAGE_SIZE = 10;
+
 const getAuthHeaders = async () => {
   const {
     data: { session },
@@ -84,7 +68,7 @@ const getAuthHeaders = async () => {
    COMPONENT
 ------------------------------------------------------------------- */
 const Inventory = () => {
-  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar"
+  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "lost_items" | "booking_calendar"
 
   // Search & filter
   const [inventorySearch, setInventorySearch] = useState("");
@@ -101,18 +85,31 @@ const Inventory = () => {
   const [newEqName, setNewEqName] = useState("");
   const [newEqCategory, setNewEqCategory] = useState("LIVESTREAM");
   const [newEqQtyTotal, setNewEqQtyTotal] = useState("1");
-  const [newEqStatus, setNewEqStatus] = useState("AVAILABLE");
+  const [eqFormError, setEqFormError] = useState("");
+  const [savingEq, setSavingEq] = useState(false);
 
-  // New condition log form
+  // Mark units unavailable (damaged / under repair / lost)
+  const [statusModalItem, setStatusModalItem] = useState(null);
+  const [statusForm, setStatusForm] = useState({ damaged_qty: 0, under_repair_qty: 0, lost_qty: 0, remarks: "" });
+  const [statusError, setStatusError] = useState("");
+  const [savingStatus, setSavingStatus] = useState(false);
+
+  // New condition log form (the staff name comes from the login, not the form)
   const [newLogItem, setNewLogItem] = useState("");
-  const [newLogStaff, setNewLogStaff] = useState("");
   const [newLogCondition, setNewLogCondition] = useState("good");
   const [newLogComment, setNewLogComment] = useState("");
   const [savingLog, setSavingLog] = useState(false);
   const [logFormError, setLogFormError] = useState("");
 
   // Data
-  const [inventoryList, setInventoryList] = useState([]);
+  const [inventoryList, setInventoryList] = useState([]); // every item (calendar, dropdowns)
+  const [pageRows, setPageRows] = useState([]); // one page of the Inventory table
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
+  const [summary, setSummary] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const refreshInventory = () => setReloadKey((k) => k + 1);
   const [logsList, setLogsList] = useState([]);
   const [logsLoading, setLogsLoading] = useState(true);
   const [logsError, setLogsError] = useState(false);
@@ -124,84 +121,124 @@ const Inventory = () => {
   });
 
   /* ----------------------------- inventory ----------------------------- */
+  // Full list: used by the booking calendar colours and the dropdowns.
   useEffect(() => {
-    const fetchInventory = async () => {
+    const fetchAll = async () => {
       try {
-        const response = await fetch(`${API_URL}/equipment`);
-        const data = await response.json();
-
-        setInventoryList(
-          data.map((item) => {
-            const statusInfo = EQUIPMENT_STATUS[item.status] || EQUIPMENT_STATUS.available;
-            return {
-              id: item.id,
-              name: item.name,
-              category: item.equipment_categories?.name?.toUpperCase() || "UNCATEGORIZED",
-              total: item.total_quantity ?? 0,
-              available: item.available_quantity ?? 0,
-              availability: `${item.available_quantity}/${item.total_quantity}`,
-              rawStatus: item.status,
-              status: statusInfo.label,
-              statusColor: statusInfo.color,
-              lastCheck: item.updated_at?.split("T")[0] || "N/A",
-            };
-          })
-        );
+        const data = await apiFetch("/equipment", { auth: false });
+        setInventoryList(data.map(toInventoryRow));
       } catch (error) {
         console.error("Failed to fetch inventory:", error);
       }
     };
-
-    fetchInventory();
-  }, []);
-
-  // Summary cards, computed from the real inventory (counted in units)
-  const stats = useMemo(() => {
-    const sum = (items, pick) => items.reduce((acc, i) => acc + pick(i), 0);
-    const inUse = inventoryList.filter((i) => i.rawStatus === "in_use");
-    const maintenance = inventoryList.filter((i) => i.rawStatus === "under_maintenance");
-    const usable = inventoryList.filter(
-      (i) => i.rawStatus !== "under_maintenance" && i.rawStatus !== "retired"
-    );
-
-    return {
-      total: sum(inventoryList, (i) => i.total),
-      available: sum(usable, (i) => i.available),
-      deployed: sum(inUse, (i) => i.total - i.available),
-      maintenance: sum(maintenance, (i) => i.total),
+    const fetchSummary = async () => {
+      try {
+        setSummary(await apiFetch("/equipment/summary", { auth: false }));
+      } catch (error) {
+        console.error("Failed to fetch inventory summary:", error);
+      }
     };
-  }, [inventoryList]);
+    fetchAll();
+    fetchSummary();
+  }, [reloadKey]);
 
-  // NOTE: still local-only. Saving to the database needs a POST /equipment route.
-  const handleAddEquipmentSubmit = (e) => {
+  // One page of the table (server-side: limit / offset + search + category).
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setInventoryLoading(true);
+      try {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          offset: String((inventoryPage - 1) * PAGE_SIZE),
+        });
+        if (inventorySearch.trim()) params.set("search", inventorySearch.trim());
+        if (selectedCategory !== "All") params.set("category", selectedCategory);
+        const data = await apiFetch(`/equipment?${params}`, { auth: false });
+        setPageRows(data.items.map(toInventoryRow));
+        setInventoryTotal(data.total);
+      } catch (error) {
+        console.error("Failed to fetch inventory page:", error);
+        setPageRows([]);
+        setInventoryTotal(0);
+      } finally {
+        setInventoryLoading(false);
+      }
+    }, 250); // small delay so typing in the search box doesn't send a request per key
+    return () => clearTimeout(timer);
+  }, [inventoryPage, inventorySearch, selectedCategory, reloadKey]);
+
+  // Back to page 1 whenever the filters change
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [inventorySearch, selectedCategory]);
+
+  // Summary cards (counted in units, across every item)
+  const stats = {
+    total: summary?.total ?? 0,
+    available: summary?.available ?? 0,
+    deployed: summary?.deployed ?? 0,
+    unavailable: summary?.unavailable ?? 0,
+  };
+
+  const handleAddEquipmentSubmit = async (e) => {
     e.preventDefault();
     if (!newEqName.trim()) return;
+    setSavingEq(true);
+    setEqFormError("");
+    try {
+      await apiFetch("/equipment", {
+        method: "POST",
+        body: {
+          name: newEqName.trim(),
+          category_name: newEqCategory,
+          total_quantity: Math.max(1, Number(newEqQtyTotal) || 1),
+        },
+      });
+      setShowAddEquipmentModal(false);
+      setNewEqName("");
+      setNewEqQtyTotal("1");
+      refreshInventory();
+    } catch (err) {
+      setEqFormError(err.message);
+    } finally {
+      setSavingEq(false);
+    }
+  };
 
-    const total = Math.max(1, Number(newEqQtyTotal) || 1);
-    const rawStatus = FORM_STATUS_TO_ENUM[newEqStatus] || "available";
-    const available = rawStatus === "available" ? total : 0;
-    const statusInfo = EQUIPMENT_STATUS[rawStatus];
+  const openStatusModal = (item) => {
+    setStatusModalItem(item);
+    setStatusError("");
+    setStatusForm({
+      damaged_qty: item.damagedQty,
+      under_repair_qty: item.underRepairQty,
+      lost_qty: item.lostQty,
+      remarks: "",
+    });
+  };
 
-    setInventoryList((prev) => [
-      {
-        id: Date.now(),
-        name: newEqName.trim(),
-        category: newEqCategory,
-        total,
-        available,
-        availability: `${available}/${total}`,
-        rawStatus,
-        status: statusInfo.label,
-        statusColor: statusInfo.color,
-        lastCheck: dateKey(new Date()),
-      },
-      ...prev,
-    ]);
-
-    setShowAddEquipmentModal(false);
-    setNewEqName("");
-    setNewEqQtyTotal("1");
-    setNewEqStatus("AVAILABLE");
+  const handleStatusSubmit = async (e) => {
+    e.preventDefault();
+    if (!statusModalItem) return;
+    setSavingStatus(true);
+    setStatusError("");
+    try {
+      await apiFetch(`/equipment/${statusModalItem.id}/unavailable`, {
+        method: "PATCH",
+        body: {
+          damaged_qty: Number(statusForm.damaged_qty) || 0,
+          under_repair_qty: Number(statusForm.under_repair_qty) || 0,
+          lost_qty: Number(statusForm.lost_qty) || 0,
+          remarks: statusForm.remarks.trim(),
+        },
+      });
+      setStatusModalItem(null);
+      refreshInventory();
+      fetchLogs();
+    } catch (err) {
+      setStatusError(err.message);
+    } finally {
+      setSavingStatus(false);
+    }
   };
 
   const handleViewQr = async (item) => {
@@ -218,29 +255,19 @@ const Inventory = () => {
     }
   };
 
-  const filteredInventory = inventoryList.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(inventorySearch.toLowerCase());
-    const matchesCat =
-      selectedCategory === "All" || item.category.toUpperCase() === selectedCategory.toUpperCase();
-    return matchesSearch && matchesCat;
-  });
 
   /* --------------------------- condition logs --------------------------- */
   const fetchLogs = useCallback(async () => {
     setLogsLoading(true);
     setLogsError(false);
 
-    const { data, error } = await supabase
-      .from("condition_logs")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    try {
+      const data = await apiFetch("/condition-logs?limit=500");
+      setLogsList(data.items.map(toLogRow));
+    } catch (error) {
       console.error("Failed to load condition logs:", error);
       setLogsError(true);
       setLogsList([]);
-    } else {
-      setLogsList(data.map(toLogRow));
     }
     setLogsLoading(false);
   }, []);
@@ -251,34 +278,32 @@ const Inventory = () => {
 
   const handleAddLogSubmit = async (e) => {
     e.preventDefault();
-    if (!newLogItem.trim() || !newLogStaff.trim()) return;
+    if (!newLogItem) return;
 
     setSavingLog(true);
     setLogFormError("");
 
-    const { data, error } = await supabase
-      .from("condition_logs")
-      .insert({
-        equipment_name: newLogItem.trim(),
-        staff_name: newLogStaff.trim(),
-        condition: newLogCondition,
-        comment: newLogComment.trim() || "Inspection complete.",
-      })
-      .select()
-      .single();
-
-    setSavingLog(false);
-
-    if (error) {
+    try {
+      // The backend fills in the staff name from the login token.
+      await apiFetch("/condition-logs", {
+        method: "POST",
+        body: {
+          equipment_id: Number(newLogItem),
+          condition: newLogCondition,
+          comment: newLogComment.trim() || "Inspection complete.",
+        },
+      });
+    } catch (error) {
       console.error("Failed to save condition log:", error);
-      setLogFormError("Could not save the log. Please try again.");
+      setLogFormError(error.message || "Could not save the log. Please try again.");
+      setSavingLog(false);
       return;
     }
+    setSavingLog(false);
 
-    setLogsList((prev) => [toLogRow(data), ...prev]);
+    await fetchLogs();
     setShowAddLogModal(false);
     setNewLogItem("");
-    setNewLogStaff("");
     setNewLogCondition("good");
     setNewLogComment("");
   };
@@ -388,6 +413,7 @@ const Inventory = () => {
   const tabs = [
     { id: "inventory", label: "Inventory" },
     { id: "condition_logs", label: "Condition Logs" },
+    { id: "lost_items", label: "Lost / Missing" },
     { id: "booking_calendar", label: "Booking Calendar" },
   ];
 
@@ -395,7 +421,7 @@ const Inventory = () => {
     { label: "Total Items", value: stats.total, labelColor: "text-neutral-400", valueColor: "text-white" },
     { label: "Available", value: stats.available, labelColor: "text-emerald-500", valueColor: "text-emerald-400" },
     { label: "Deployed", value: stats.deployed, labelColor: "text-blue-500", valueColor: "text-blue-400" },
-    { label: "Maintenance", value: stats.maintenance, labelColor: "text-amber-500", valueColor: "text-amber-400" },
+    { label: "Unavailable", value: stats.unavailable, labelColor: "text-red-500", valueColor: "text-red-400" },
   ];
 
   return (
@@ -406,7 +432,7 @@ const Inventory = () => {
         </h1>
 
         {/* Sub-navigation */}
-        <div className="flex items-center gap-8 border-b border-[#1b212f] text-xs font-black uppercase tracking-wider">
+        <div className="flex items-center gap-8 border-b border-[#1b212f] text-xs font-black uppercase tracking-wider overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -478,15 +504,29 @@ const Inventory = () => {
                   <tr className="border-b border-[#1b212f] text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#0b0e14]">
                     <th className="py-4 pl-6">Equipment</th>
                     <th className="py-4">Category</th>
-                    <th className="py-4">Availability</th>
+                    <th className="py-4">On Hand</th>
                     <th className="py-4">Status</th>
                     <th className="py-4">Last Inspection</th>
                     <th className="py-4 pr-6 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#141824]">
-                  {filteredInventory.map((item) => (
-                    <tr key={item.id} className="hover:bg-[#121622] transition-colors">
+                  {inventoryLoading && pageRows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-neutral-500">
+                        Loading inventory...
+                      </td>
+                    </tr>
+                  )}
+                  {!inventoryLoading && pageRows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-neutral-500">
+                        No equipment found.
+                      </td>
+                    </tr>
+                  )}
+                  {pageRows.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#121622] transition-colors align-top">
                       <td className="py-4 pl-6">
                         <div className="flex items-center gap-3">
                           <span className="text-red-500 font-bold">☵</span>
@@ -498,23 +538,21 @@ const Inventory = () => {
                           {item.category}
                         </span>
                       </td>
-                      <td className="py-4 font-mono font-bold text-neutral-300">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          <span>{item.availability}</span>
-                        </span>
+                      <td className="py-4">
+                        <AvailabilityCell row={item} />
                       </td>
                       <td className="py-4">
-                        <span
-                          className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded border ${
-                            STATUS_BADGE_STYLES[item.statusColor] || STATUS_BADGE_STYLES.neutral
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                        <StatusCell row={item} />
                       </td>
                       <td className="py-4 font-mono text-neutral-400 text-[11px]">{item.lastCheck}</td>
-                      <td className="py-4 pr-6 text-right">
+                      <td className="py-4 pr-6 text-right whitespace-nowrap space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => openStatusModal(item)}
+                          className="text-[11px] font-bold text-amber-400 hover:text-amber-300 transition cursor-pointer"
+                        >
+                          Set Unavailable
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleViewQr(item)}
@@ -528,6 +566,14 @@ const Inventory = () => {
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              page={inventoryPage}
+              pageSize={PAGE_SIZE}
+              total={inventoryTotal}
+              onChange={setInventoryPage}
+              label="items"
+            />
           </div>
         )}
 
@@ -581,7 +627,7 @@ const Inventory = () => {
 
             {logsError && (
               <div className="border border-red-900/40 bg-red-950/10 rounded-2xl p-6 text-center text-red-500 text-sm">
-                Could not load condition logs. Check that the condition_logs table exists and you have access.
+                Could not load condition logs. Make sure the backend is running and you are logged in as admin.
               </div>
             )}
 
@@ -638,6 +684,11 @@ const Inventory = () => {
               </div>
             )}
           </div>
+        )}
+
+        {/* ========================== LOST / MISSING ========================== */}
+        {subTab === "lost_items" && (
+          <LostItemsPanel equipment={inventoryList} isAdmin onChanged={refreshInventory} />
         )}
 
         {/* ========================= BOOKING CALENDAR ========================= */}
@@ -827,20 +878,11 @@ const Inventory = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
-                Status
-              </label>
-              <select
-                value={newEqStatus}
-                onChange={(e) => setNewEqStatus(e.target.value)}
-                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-3 py-2.5 text-xs text-neutral-300 focus:border-red-600 focus:outline-none"
-              >
-                <option value="AVAILABLE">Available</option>
-                <option value="DEPLOYED">Deployed</option>
-                <option value="MAINTENANCE">Maintenance</option>
-              </select>
-            </div>
+            <p className="text-[10px] text-neutral-500">
+              New units start as available. Use "Set Unavailable" in the table to mark damaged, under-repair or lost units.
+            </p>
+
+            {eqFormError && <p className="text-[11px] font-bold text-red-500">{eqFormError}</p>}
 
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -852,9 +894,10 @@ const Inventory = () => {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition shadow-lg shadow-red-950/50"
+                disabled={savingEq}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition shadow-lg shadow-red-950/50 disabled:opacity-50"
               >
-                Save Item
+                {savingEq ? "Saving..." : "Save Item"}
               </button>
             </div>
           </form>
@@ -885,34 +928,22 @@ const Inventory = () => {
               <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
                 Item Name *
               </label>
-              <input
-                type="text"
+              <select
                 required
-                list="equipment-names"
-                placeholder="e.g. LED Bar Unit 3"
                 value={newLogItem}
                 onChange={(e) => setNewLogItem(e.target.value)}
-                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
-              />
-              <datalist id="equipment-names">
+                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-red-600 cursor-pointer"
+              >
+                <option value="">Select equipment...</option>
                 {inventoryList.map((i) => (
-                  <option key={i.id} value={i.name} />
+                  <option key={i.id} value={i.id}>
+                    {i.name}
+                  </option>
                 ))}
-              </datalist>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
-                Staff Name *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Juan dela Cruz"
-                value={newLogStaff}
-                onChange={(e) => setNewLogStaff(e.target.value)}
-                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
-              />
+              </select>
+              <p className="text-[10px] text-neutral-500 mt-1.5">
+                Logged under your account automatically.
+              </p>
             </div>
 
             <div>
@@ -965,6 +996,85 @@ const Inventory = () => {
         </div>
       )}
 
+      {/* ==================== MODAL: SET UNAVAILABLE UNITS ==================== */}
+      {statusModalItem && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleStatusSubmit}
+            className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 shadow-2xl text-white"
+          >
+            <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
+              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                Unavailable Units — {statusModalItem.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setStatusModalItem(null)}
+                className="text-neutral-500 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-[11px] text-neutral-400">
+              {statusModalItem.total} unit(s) in total, {statusModalItem.available} on hand. Units you mark here
+              are taken off the shelf and can't be booked. Repairs are normally tracked from the Maintenance page
+              and lost items from the Lost / Missing tab; use this to correct the counts.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ["damaged_qty", "Damaged"],
+                ["under_repair_qty", "Under Repair"],
+                ["lost_qty", "Lost"],
+              ].map(([key, text]) => (
+                <div key={key}>
+                  <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
+                    {text}
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={statusModalItem.total}
+                    value={statusForm[key]}
+                    onChange={(e) => setStatusForm({ ...statusForm, [key]: e.target.value })}
+                    className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-3 py-2.5 text-xs text-white focus:border-red-600 focus:outline-none"
+                  />
+                </div>
+              ))}
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
+                Remarks *
+              </label>
+              <textarea
+                rows={3}
+                required
+                placeholder="Why the count changed..."
+                value={statusForm.remarks}
+                onChange={(e) => setStatusForm({ ...statusForm, remarks: e.target.value })}
+                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 resize-none"
+              />
+            </div>
+            {statusError && <p className="text-[11px] font-bold text-red-500">{statusError}</p>}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setStatusModalItem(null)}
+                className="px-4 py-2.5 rounded-xl border border-[#1b212f] text-neutral-400 hover:text-white text-xs font-bold uppercase transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingStatus}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider transition disabled:opacity-50"
+              >
+                {savingStatus ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* ============================ MODAL: VIEW QR ============================ */}
       {qrModalItem && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1007,10 +1117,10 @@ const toLogRow = (row) => {
   const { date, time } = formatLogDate(row.created_at);
   return {
     id: row.id,
-    item: row.equipment_name,
+    item: row.equipment_name || "Unknown item",
     condition: String(row.condition || "fair").toUpperCase(),
     comment: row.comment || "",
-    staff: row.staff_name,
+    staff: row.staff_name || "Unknown",
     date,
     time,
   };

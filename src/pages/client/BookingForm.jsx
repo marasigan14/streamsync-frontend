@@ -29,6 +29,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import { apiFetch, todayPH } from "../../lib/api";
 import logoImage from "../../assets/livestream-logo.png";
 import MyBookings from "./MyBookings";
 
@@ -1161,7 +1162,10 @@ const BookingForm = () => {
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [venue, setVenue] = useState("");
-  const [venueDistance, setVenueDistance] = useState("15"); // Distance in km from Culiat, QC HQ[cite: 11]
+  const [venueDistance, setVenueDistance] = useState("15"); // Distance in km from Culiat, QC HQ
+  // Map lookup: venue address -> road distance (km) from the office
+  const [distanceLookup, setDistanceLookup] = useState({ status: "idle", text: "" });
+  const lastLookedUp = useRef("");
   const [estimatedGuests, setEstimatedGuests] = useState("100");
   const [specialNotes, setSpecialNotes] = useState("");
 
@@ -1486,7 +1490,28 @@ const BookingForm = () => {
     return parseFloat(cleaned) || 0;
   };
 
-  // Logistics fee calculation from Culiat, QC HQ[cite: 11]
+  // Logistics fee calculation from Culiat, QC HQ
+  // Ask the backend for the road distance from the office to the venue.
+  const lookupDistance = async (address = venue) => {
+    const text = (address || "").trim();
+    if (text.length < 5 || text === lastLookedUp.current) return;
+    lastLookedUp.current = text;
+    setDistanceLookup({ status: "loading", text: "Measuring distance on the map..." });
+    try {
+      const r = await apiFetch(`/bookings/distance?address=${encodeURIComponent(text)}`);
+      setVenueDistance(String(r.distance_km));
+      setDistanceLookup({
+        status: "ok",
+        text: `${r.distance_km} km by road to: ${r.matched_address}`,
+      });
+    } catch (err) {
+      setDistanceLookup({
+        status: "error",
+        text: `${err.message} You can type the distance yourself.`,
+      });
+    }
+  };
+
   const computeLogisticsFee = (distKm) => {
     const km = parseFloat(distKm) || 0;
     if (km <= 0) return 0;
@@ -1666,6 +1691,16 @@ const BookingForm = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
+      if (startDate < todayPH()) {
+        setErrorMessage("The Start Date can't be in the past.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      if (endDate && endDate < startDate) {
+        setErrorMessage("The End Date can't be before the Start Date.");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
       if (startTime >= endTime) {
         setErrorMessage("End Time must be after Start Time.");
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1709,6 +1744,7 @@ const BookingForm = () => {
         end_time: endTime,
         venue: venue,
         venue_distance: parseFloat(venueDistance) || 0,
+        distance_km: parseFloat(venueDistance) || null, // saved on the booking; adds the transport fee
         estimated_guests: estimatedGuests ? parseInt(estimatedGuests) : null,
         special_notes: specialNotes,
         services: serviceTitles,
@@ -2071,8 +2107,12 @@ const BookingForm = () => {
                   </label>
                   <input
                     type="date"
+                    min={todayPH()}
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      if (endDate && e.target.value > endDate) setEndDate("");
+                    }}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
                   />
                 </div>
@@ -2083,6 +2123,7 @@ const BookingForm = () => {
                   </label>
                   <input
                     type="date"
+                    min={startDate || todayPH()}
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
@@ -2126,15 +2167,38 @@ const BookingForm = () => {
                     placeholder="e.g. PICC Plenary Hall, Pasay City"
                     value={venue}
                     onChange={(e) => setVenue(e.target.value)}
+                    onBlur={() => lookupDistance()}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
                   />
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        lastLookedUp.current = "";
+                        lookupDistance();
+                      }}
+                      disabled={distanceLookup.status === "loading" || venue.trim().length < 5}
+                      className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:text-red-400 disabled:opacity-40 cursor-pointer shrink-0"
+                    >
+                      {distanceLookup.status === "loading" ? "Measuring..." : "Get distance from map"}
+                    </button>
+                    {distanceLookup.text && (
+                      <span
+                        className={`text-[10px] ${
+                          distanceLookup.status === "error" ? "text-amber-500" : "text-neutral-500"
+                        }`}
+                      >
+                        {distanceLookup.text}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5 flex items-center justify-between">
                     <span>Est. Distance (km)</span>
                     <span className="text-[9px] text-neutral-500 lowercase font-normal">
-                      from Culiat HQ[cite: 11]
+                      from Culiat HQ
                     </span>
                   </label>
                   <input
@@ -2142,7 +2206,10 @@ const BookingForm = () => {
                     min="1"
                     placeholder="e.g. 15"
                     value={venueDistance}
-                    onChange={(e) => setVenueDistance(e.target.value)}
+                    onChange={(e) => {
+                      setVenueDistance(e.target.value);
+                      setDistanceLookup({ status: "manual", text: "Distance entered manually." });
+                    }}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 font-mono"
                   />
                 </div>
@@ -2572,7 +2639,7 @@ const BookingForm = () => {
                   </span>
                   <span className="text-neutral-300">
                     Logistics & Vehicle Deployment ({venueDistance || 0} km from
-                    Culiat QC HQ)[cite: 11]
+                    Culiat QC HQ)
                   </span>
                 </div>
                 <span className="font-mono text-neutral-300 font-bold">
@@ -2624,7 +2691,7 @@ const BookingForm = () => {
                 This is the initial contract rate. Additional charges may apply
                 on the final billing statement for on-site gear requests, extra
                 operational hours beyond the schedule, or crew overtime
-                fees[cite: 11].
+                fees.
               </p>
             </div>
           </section>

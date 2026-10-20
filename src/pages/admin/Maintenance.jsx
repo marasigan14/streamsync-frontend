@@ -35,6 +35,7 @@ const Maintenance = () => {
   const [equipmentOptions, setEquipmentOptions] = useState([]);
   const [reportEquipmentId, setReportEquipmentId] = useState("");
   const [reportDescription, setReportDescription] = useState("");
+  const [reportQuantity, setReportQuantity] = useState("1");
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportError, setReportError] = useState("");
 
@@ -101,7 +102,10 @@ const Maintenance = () => {
 
   const fetchEquipmentOptions = async () => {
     // Equipment list is read-only here, so a direct Supabase select is fine.
-    const { data, error } = await supabase.from("equipment").select("id, name").order("name");
+    const { data, error } = await supabase
+      .from("equipment")
+      .select("id, name, available_quantity")
+      .order("name");
     if (!error && data) setEquipmentOptions(data);
   };
 
@@ -136,6 +140,7 @@ const Maintenance = () => {
       }
 
       await fetchMaintenanceLogs();
+      fetchEquipmentOptions();
     } catch (err) {
       console.error(err);
       alert(err.message || "Failed to update maintenance log.");
@@ -153,6 +158,10 @@ const Maintenance = () => {
 
   const handleConfirmResolve = () => {
     if (!resolvingLog) return;
+    if (!resolveNotes.trim()) {
+      alert("Please add remarks on what was fixed.");
+      return;
+    }
     updateLogStatus(resolvingLog.id, "resolved", resolveNotes);
     setResolvingLog(null);
   };
@@ -161,8 +170,8 @@ const Maintenance = () => {
     e.preventDefault();
     setReportError("");
 
-    if (!reportEquipmentId || !reportDescription.trim()) {
-      setReportError("Please select equipment and describe the issue.");
+    if (!reportEquipmentId || reportDescription.trim().length < 3) {
+      setReportError("Please select equipment and enter remarks describing the issue.");
       return;
     }
 
@@ -182,6 +191,7 @@ const Maintenance = () => {
         body: JSON.stringify({
           equipment_id: parseInt(reportEquipmentId, 10),
           issue_description: reportDescription.trim(),
+          quantity: Math.max(1, parseInt(reportQuantity, 10) || 1),
         }),
       });
 
@@ -193,6 +203,8 @@ const Maintenance = () => {
       setShowReportModal(false);
       setReportEquipmentId("");
       setReportDescription("");
+      setReportQuantity("1");
+      fetchEquipmentOptions();
       await fetchMaintenanceLogs();
     } catch (err) {
       setReportError(err.message || "Failed to report issue.");
@@ -263,7 +275,7 @@ const Maintenance = () => {
           <div>
             <p className="text-3xl font-black text-white leading-none mb-1">{inProgressCount}</p>
             <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
-              In Progress
+              Ongoing (In Repair)
             </p>
           </div>
         </div>
@@ -275,7 +287,7 @@ const Maintenance = () => {
           <div>
             <p className="text-3xl font-black text-white leading-none mb-1">{resolvedLogs.length}</p>
             <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
-              Resolved
+              Completed
             </p>
           </div>
         </div>
@@ -314,7 +326,7 @@ const Maintenance = () => {
             }`}
           >
             <AlertTriangle size={14} />
-            <span>Action Queue</span>
+            <span>Ongoing</span>
           </button>
 
           <button
@@ -327,7 +339,7 @@ const Maintenance = () => {
             }`}
           >
             <CheckCircle size={14} />
-            <span>Maintenance Logs</span>
+            <span>Completed</span>
           </button>
 
           <button
@@ -389,7 +401,10 @@ const Maintenance = () => {
                               : "bg-blue-950/40 text-blue-400 border-blue-800/50"
                           }`}
                         >
-                          {log.status === "reported" ? "REPORTED" : "IN PROGRESS"}
+                          ONGOING · {log.status === "reported" ? "REPORTED" : "IN PROGRESS"}
+                        </span>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border bg-[#141824] text-neutral-300 border-[#1e2638]">
+                          {log.quantity || 1} unit{(log.quantity || 1) > 1 ? "s" : ""} in repair
                         </span>
                       </div>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
@@ -418,7 +433,7 @@ const Maintenance = () => {
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-pointer shadow-lg shadow-emerald-950/50 flex items-center gap-1.5 disabled:opacity-50"
                         >
                           <CheckCircle2 size={14} />
-                          <span>{actioningId === log.id ? "..." : "Mark Resolved"}</span>
+                          <span>{actioningId === log.id ? "..." : "Mark Completed"}</span>
                         </button>
                       )}
                     </div>
@@ -606,7 +621,7 @@ const Maintenance = () => {
                   onClick={handleConfirmResolve}
                   className="w-1/2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider transition cursor-pointer disabled:opacity-50"
                 >
-                  {actioningId === resolvingLog.id ? "Saving..." : "Confirm Resolved"}
+                  {actioningId === resolvingLog.id ? "Saving..." : "Confirm Completed"}
                 </button>
               </div>
             </div>
@@ -648,7 +663,7 @@ const Maintenance = () => {
                   <option value="">Select equipment...</option>
                   {equipmentOptions.map((eq) => (
                     <option key={eq.id} value={eq.id}>
-                      {eq.name}
+                      {eq.name} ({eq.available_quantity ?? 0} on hand)
                     </option>
                   ))}
                 </select>
@@ -656,10 +671,31 @@ const Maintenance = () => {
 
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
-                  Issue Description
+                  Units to Repair
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={
+                    equipmentOptions.find((eq) => String(eq.id) === String(reportEquipmentId))
+                      ?.available_quantity || undefined
+                  }
+                  value={reportQuantity}
+                  onChange={(e) => setReportQuantity(e.target.value)}
+                  className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
+                />
+                <p className="text-[10px] text-neutral-500 mt-1">
+                  These units move to "Under Repair" and can't be booked until the log is completed.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
+                  Remarks *
                 </label>
                 <textarea
                   rows={3}
+                  required
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
                   placeholder="Describe the defect or concern..."

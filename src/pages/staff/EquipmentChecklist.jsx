@@ -14,8 +14,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
+import { apiFetch } from "../../lib/api";
+import Pagination from "../../components/Pagination";
+import LostItemsPanel from "../../components/LostItemsPanel";
+import { toInventoryRow, AvailabilityCell, StatusCell } from "../../components/EquipmentStatus";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const PAGE_SIZE = 10;
 
 // ------------------------------------------------------------------
 // TABLE: equipment
@@ -23,11 +28,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 //          available_quantity, last_maintained_at, ...
 // category_id is a foreign key; the category name is joined in loadInventory().
 // ------------------------------------------------------------------
-const statusColorFor = (status) =>
-  status === "MAINTENANCE" ? "amber" : status === "DEPLOYED" ? "blue" : "emerald";
-
 const EquipmentChecklist = () => {
-  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "booking_calendar" | "scan_equipment"
+  const [subTab, setSubTab] = useState("inventory"); // "inventory" | "condition_logs" | "lost_items" | "booking_calendar" | "scan_equipment"
   const [showAddLog, setShowAddLog] = useState(false);
 
   // Filters
@@ -37,7 +39,6 @@ const EquipmentChecklist = () => {
 
   // Form State for Condition Logs
   const [newEquipmentId, setNewEquipmentId] = useState("");
-  const [newStaffName, setNewStaffName] = useState("");
   const [newCondition, setNewCondition] = useState("good");
   const [newComment, setNewComment] = useState("");
 
@@ -49,60 +50,64 @@ const EquipmentChecklist = () => {
   const html5QrCodeRef = useRef(null);
 
   // ================================================================
-  // Inventory (live from Supabase)
+  // Inventory (from the backend: quantity-based status)
   // ================================================================
-  const [inventoryList, setInventoryList] = useState([]);
+  const [inventoryList, setInventoryList] = useState([]); // every item (dropdowns, scan names)
+  const [pageRows, setPageRows] = useState([]); // one page of the table
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
+  const [summary, setSummary] = useState(null);
   const [inventoryLoading, setInventoryLoading] = useState(true);
   const [inventoryError, setInventoryError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const loadInventory = async () => {
-    setInventoryLoading(true);
-    setInventoryError(null);
-
-    const { data, error } = await supabase
-      .from("equipment")
-      .select("id, name, status, total_quantity, available_quantity, last_maintained_at, category:category_id(name)")
-      .order("name");
-
-    if (error) {
-      console.error("Failed to load inventory:", error);
-      setInventoryError(error.message);
-      setInventoryLoading(false);
-      return;
-    }
-
-    setInventoryList(
-      (data || []).map((row) => {
-        const total = row.total_quantity ?? 0;
-        const available = row.available_quantity ?? 0;
-
-        // status is a Postgres enum: normalize it to AVAILABLE / DEPLOYED / MAINTENANCE
-        const raw = String(row.status || "").toUpperCase();
-        let status;
-        if (raw.includes("MAINT") || raw.includes("REPAIR")) status = "MAINTENANCE";
-        else if (raw.includes("DEPLOY") || raw.includes("OUT") || raw.includes("USE")) status = "DEPLOYED";
-        else if (raw) status = "AVAILABLE";
-        else status = available < total ? "DEPLOYED" : "AVAILABLE";
-
-        return {
-          id: row.id,
-          name: row.name,
-          category: (row.category?.name || "").toUpperCase(),
-          total,
-          available,
-          availability: `${available}/${total}`,
-          status,
-          statusColor: statusColorFor(status),
-          lastCheck: row.last_maintained_at ? row.last_maintained_at.slice(0, 10) : "—",
-        };
-      })
-    );
-    setInventoryLoading(false);
-  };
+  // Called after a scan / lost report so every count refreshes.
+  const loadInventory = () => setReloadKey((k) => k + 1);
 
   useEffect(() => {
-    loadInventory();
-  }, []);
+    (async () => {
+      try {
+        const [all, sum] = await Promise.all([
+          apiFetch("/equipment", { auth: false }),
+          apiFetch("/equipment/summary", { auth: false }),
+        ]);
+        setInventoryList(all.map(toInventoryRow));
+        setSummary(sum);
+      } catch (error) {
+        console.error("Failed to load inventory:", error);
+        setInventoryError(error.message);
+      }
+    })();
+  }, [reloadKey]);
+
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      setInventoryLoading(true);
+      setInventoryError(null);
+      try {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          offset: String((inventoryPage - 1) * PAGE_SIZE),
+        });
+        if (inventorySearch.trim()) params.set("search", inventorySearch.trim());
+        if (selectedCategory !== "All") params.set("category", selectedCategory);
+        const data = await apiFetch(`/equipment?${params}`, { auth: false });
+        setPageRows(data.items.map(toInventoryRow));
+        setInventoryTotal(data.total);
+      } catch (error) {
+        console.error("Failed to load inventory:", error);
+        setInventoryError(error.message);
+        setPageRows([]);
+      } finally {
+        setInventoryLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [inventoryPage, inventorySearch, selectedCategory, reloadKey]);
+
+  useEffect(() => {
+    setInventoryPage(1);
+  }, [inventorySearch, selectedCategory]);
 
   // ================================================================
   // Condition Logs (live from Supabase: equipment_condition_logs)
@@ -112,12 +117,10 @@ const EquipmentChecklist = () => {
 
   const loadLogs = async () => {
     setLogsError(null);
-    const { data, error } = await supabase
-      .from("equipment_condition_logs")
-      .select("id, condition, comment, staff_name, created_at, equipment:equipment_id(name)")
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    let data;
+    try {
+      data = (await apiFetch("/condition-logs?limit=500")).items;
+    } catch (error) {
       console.error("Failed to load condition logs:", error);
       setLogsError(error.message);
       return;
@@ -128,10 +131,10 @@ const EquipmentChecklist = () => {
         const d = new Date(row.created_at);
         return {
           id: row.id,
-          item: row.equipment?.name || "Unknown item",
+          item: row.equipment_name || "Unknown item",
           condition: (row.condition || "").toUpperCase(),
           comment: row.comment || "—",
-          staff: row.staff_name,
+          staff: row.staff_name || "Unknown",
           date: d.toLocaleDateString("en-CA"),
           time: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
         };
@@ -141,16 +144,19 @@ const EquipmentChecklist = () => {
 
   const handleAddLogSubmit = async (e) => {
     e.preventDefault();
-    if (!newEquipmentId || !newStaffName.trim()) return;
+    if (!newEquipmentId) return;
 
-    const { error } = await supabase.from("equipment_condition_logs").insert({
-      equipment_id: parseInt(newEquipmentId, 10),
-      condition: newCondition,
-      comment: newComment.trim() || "Inspection complete.",
-      staff_name: newStaffName.trim(),
-    });
-
-    if (error) {
+    // The staff member is taken from the login token on the server, not from this form.
+    try {
+      await apiFetch("/condition-logs", {
+        method: "POST",
+        body: {
+          equipment_id: parseInt(newEquipmentId, 10),
+          condition: newCondition,
+          comment: newComment.trim() || "Inspection complete.",
+        },
+      });
+    } catch (error) {
       console.error("Failed to save condition log:", error);
       setLogsError(error.message);
       return;
@@ -158,7 +164,6 @@ const EquipmentChecklist = () => {
 
     setShowAddLog(false);
     setNewEquipmentId("");
-    setNewStaffName("");
     setNewCondition("good");
     setNewComment("");
     await loadLogs();
@@ -360,11 +365,6 @@ const EquipmentChecklist = () => {
   // ================================================================
   // Derived data
   // ================================================================
-  const filteredInventory = inventoryList.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(inventorySearch.toLowerCase());
-    const matchesCat = selectedCategory === "All" || item.category.toUpperCase() === selectedCategory.toUpperCase();
-    return matchesSearch && matchesCat;
-  });
 
   const filteredLogs = logsList.filter(
     (l) =>
@@ -373,17 +373,12 @@ const EquipmentChecklist = () => {
   );
 
   // Stat cards computed from the same fetched data as the table
-  const stats = inventoryList.reduce(
-    (acc, item) => {
-      const out = item.total - item.available;
-      acc.total += item.total;
-      acc.available += item.available;
-      if (item.status === "MAINTENANCE") acc.maintenance += out;
-      else acc.deployed += out;
-      return acc;
-    },
-    { total: 0, available: 0, deployed: 0, maintenance: 0 }
-  );
+  const stats = {
+    total: summary?.total ?? 0,
+    available: summary?.available ?? 0,
+    deployed: summary?.deployed ?? 0,
+    unavailable: summary?.unavailable ?? 0,
+  };
 
   return (
     <div className="w-full space-y-6 font-['Montserrat',sans-serif] text-white">
@@ -394,7 +389,7 @@ const EquipmentChecklist = () => {
         </h1>
 
         {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-8 border-b border-[#1b212f] text-xs font-black uppercase tracking-wider">
+        <div className="flex items-center gap-8 border-b border-[#1b212f] text-xs font-black uppercase tracking-wider overflow-x-auto">
           <button
             type="button"
             onClick={() => setSubTab("inventory")}
@@ -416,6 +411,17 @@ const EquipmentChecklist = () => {
             }`}
           >
             Condition Logs
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("lost_items")}
+            className={`pb-3.5 transition cursor-pointer whitespace-nowrap ${
+              subTab === "lost_items"
+                ? "text-red-600 border-b-2 border-red-600"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Lost / Missing
           </button>
           <button
             type="button"
@@ -471,10 +477,10 @@ const EquipmentChecklist = () => {
                 <h3 className="text-3xl font-black text-blue-400">{stats.deployed}</h3>
               </div>
               <div className="bg-[#0b0e14] border border-[#1b212f] rounded-xl p-5">
-                <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">
-                  Maintenance
+                <p className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-1">
+                  Unavailable
                 </p>
-                <h3 className="text-3xl font-black text-amber-400">{stats.maintenance}</h3>
+                <h3 className="text-3xl font-black text-red-400">{stats.unavailable}</h3>
               </div>
             </div>
 
@@ -522,23 +528,22 @@ const EquipmentChecklist = () => {
                   <tr className="border-b border-[#1b212f] text-[10px] font-bold text-neutral-500 uppercase tracking-wider bg-[#0b0e14]">
                     <th className="py-4 pl-6">Equipment</th>
                     <th className="py-4">Category</th>
-                    <th className="py-4">Availability</th>
+                    <th className="py-4">On Hand</th>
                     <th className="py-4">Status</th>
-                    <th className="py-4">Last Inspection</th>
-                    <th className="py-4 pr-6 text-right">Action</th>
+                    <th className="py-4 pr-6">Last Inspection</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#141824]">
-                  {!inventoryLoading && !inventoryError && filteredInventory.length === 0 && (
+                  {!inventoryLoading && !inventoryError && pageRows.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-neutral-500">
+                      <td colSpan={5} className="py-8 text-center text-neutral-500">
                         No equipment found.
                       </td>
                     </tr>
                   )}
 
-                  {filteredInventory.map((item) => (
-                    <tr key={item.id} className="hover:bg-[#121622] transition-colors">
+                  {pageRows.map((item) => (
+                    <tr key={item.id} className="hover:bg-[#121622] transition-colors align-top">
                       <td className="py-4 pl-6">
                         <div className="flex items-center gap-3">
                           <span className="text-red-500 font-bold">☵</span>
@@ -552,48 +557,28 @@ const EquipmentChecklist = () => {
                         </span>
                       </td>
 
-                      <td className="py-4 font-mono font-bold text-neutral-300">
-                        <span className="flex items-center gap-1.5">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              item.available === 0 ? "bg-red-500" : "bg-emerald-500"
-                            }`}
-                          ></span>
-                          <span>{item.availability}</span>
-                        </span>
+                      <td className="py-4">
+                        <AvailabilityCell row={item} />
                       </td>
 
                       <td className="py-4">
-                        <span
-                          className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded border ${
-                            item.statusColor === "emerald"
-                              ? "bg-emerald-950/40 text-emerald-400 border-emerald-800/50"
-                              : item.statusColor === "blue"
-                              ? "bg-blue-950/40 text-blue-400 border-blue-800/50"
-                              : "bg-amber-950/40 text-amber-400 border-amber-800/50"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                        <StatusCell row={item} />
                       </td>
 
-                      <td className="py-4 font-mono text-neutral-400 text-[11px]">
-                        {item.lastCheck}
-                      </td>
-
-                      <td className="py-4 pr-6 text-right">
-                        <button
-                          type="button"
-                          className="text-[11px] font-bold text-neutral-400 hover:text-white transition cursor-pointer"
-                        >
-                          View
-                        </button>
-                      </td>
+                      <td className="py-4 pr-6 font-mono text-neutral-400 text-[11px]">{item.lastCheck}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              page={inventoryPage}
+              pageSize={PAGE_SIZE}
+              total={inventoryTotal}
+              onChange={setInventoryPage}
+              label="items"
+            />
           </div>
         )}
 
@@ -677,16 +662,11 @@ const EquipmentChecklist = () => {
 
                   <div>
                     <label className="block text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
-                      Staff Name *
+                      Logged By
                     </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Juan dela Cruz"
-                      value={newStaffName}
-                      onChange={(e) => setNewStaffName(e.target.value)}
-                      className="w-full bg-[#0f121a] border border-[#1b212f] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
-                    />
+                    <p className="text-xs text-neutral-400 py-3">
+                      Your name is added automatically from your login.
+                    </p>
                   </div>
                 </div>
 
@@ -790,6 +770,13 @@ const EquipmentChecklist = () => {
               </table>
             </div>
           </div>
+        )}
+
+        {/* ============================================================== */}
+        {/* SUB-TAB: LOST / MISSING                                         */}
+        {/* ============================================================== */}
+        {subTab === "lost_items" && (
+          <LostItemsPanel equipment={inventoryList} onChanged={loadInventory} />
         )}
 
         {/* ============================================================== */}

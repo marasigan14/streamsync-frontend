@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
+import { apiFetch } from "../../lib/api";
 import {
   AlertTriangle,
   Calendar,
@@ -62,6 +63,7 @@ const StaffMaintenance = () => {
   const [flagEquipmentId, setFlagEquipmentId] = useState("");
   const [flagPriority, setFlagPriority] = useState("high");
   const [flagIssue, setFlagIssue] = useState("");
+  const [flagQuantity, setFlagQuantity] = useState("1");
 
   // Complete-work modal
   const [completeTask, setCompleteTask] = useState(null);
@@ -79,7 +81,7 @@ const StaffMaintenance = () => {
 
     const [logsRes, eqRes, usersRes] = await Promise.all([
       supabase.from("maintenance_logs").select("*").order("reported_at", { ascending: false }),
-      supabase.from("equipment").select("id, name").order("name"),
+      supabase.from("equipment").select("id, name, available_quantity").order("name"),
       supabase.from("users").select("id, name"),
     ]);
 
@@ -105,6 +107,7 @@ const StaffMaintenance = () => {
         assignedName: userMap[r.assigned_to] || null,
         reportedBy: userMap[r.reported_by] || "Unknown",
         issue: r.issue_description || "—",
+        quantity: r.quantity || 1,
         reportedDate: (r.reported_at || "").slice(0, 10),
         scheduledDate: r.scheduled_date || null,
         resolvedDate: (r.resolved_at || "").slice(0, 10),
@@ -125,8 +128,10 @@ const StaffMaintenance = () => {
   // ================================================================
   // Actions
   // ================================================================
+  // Every open log is "Ongoing"; the detail says where in the workflow it is.
   const displayStatus = (r) =>
-    r.dbStatus === "in_progress" ? "IN PROGRESS" : r.assignedTo ? "SCHEDULED" : "AWAITING SCHEDULE";
+    "ONGOING · " +
+    (r.dbStatus === "in_progress" ? "IN PROGRESS" : r.assignedTo ? "SCHEDULED" : "AWAITING SCHEDULE");
 
   const startWork = async (row) => {
     setBusy(true);
@@ -157,52 +162,59 @@ const StaffMaintenance = () => {
 
     setBusy(true);
     setError(null);
-    const { data, error: err } = await supabase
-      .from("maintenance_logs")
-      .update({
-        status: "resolved",
-        resolved_at: new Date().toISOString(),
-        resolved_by: me,
-        resolution_notes: resolutionNotes.trim(),
-        new_condition: newCondition,
-      })
-      .eq("id", completeTask.id)
-      .select();
-    setBusy(false);
-
-    if (err || !data || data.length === 0) {
-      setError(err?.message || "Could not complete this task. Check that it is assigned to you.");
+    // Through the backend, so the units go back from "under repair" to available.
+    try {
+      await apiFetch(`/maintenance-logs/${completeTask.id}`, {
+        method: "PATCH",
+        body: {
+          status: "resolved",
+          resolution_notes: resolutionNotes.trim(),
+          new_condition: newCondition,
+        },
+      });
+    } catch (err) {
+      setBusy(false);
+      setError(err.message || "Could not complete this task.");
       return;
     }
+    setBusy(false);
     setCompleteTask(null);
     await loadData();
   };
 
   const handleFlagSubmit = async (e) => {
     e.preventDefault();
-    if (!flagEquipmentId) return;
+    if (!flagEquipmentId || flagIssue.trim().length < 3) {
+      setError("Select the equipment and enter remarks describing the issue.");
+      return;
+    }
 
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.from("maintenance_logs").insert({
-      equipment_id: parseInt(flagEquipmentId, 10),
-      issue_description: flagIssue.trim() || "Staff reported maintenance check needed.",
-      priority: flagPriority,
-      source: "staff_report",
-      status: "reported",
-      reported_by: me,
-    });
-    setBusy(false);
-
-    if (err) {
+    // Through the backend: the reported units move into "under repair".
+    try {
+      await apiFetch("/maintenance-logs/", {
+        method: "POST",
+        body: {
+          equipment_id: parseInt(flagEquipmentId, 10),
+          issue_description: flagIssue.trim(),
+          quantity: Math.max(1, parseInt(flagQuantity, 10) || 1),
+          priority: flagPriority,
+          source: "staff_report",
+        },
+      });
+    } catch (err) {
+      setBusy(false);
       console.error("Failed to flag equipment:", err);
       setError(err.message);
       return;
     }
+    setBusy(false);
 
     setShowFlagModal(false);
     setFlagEquipmentId("");
     setFlagIssue("");
+    setFlagQuantity("1");
     setFlagPriority("high");
     await loadData();
 
@@ -262,7 +274,11 @@ const StaffMaintenance = () => {
                 <AlertTriangle size={11} /> {SOURCE_LABEL[item.source] || item.source}
               </span>
               <span>•</span>
-              <span className={status === "IN PROGRESS" ? "text-blue-500" : "text-neutral-400"}>{status}</span>
+              <span className={status.includes("IN PROGRESS") ? "text-blue-500" : "text-neutral-400"}>{status}</span>
+              <span>•</span>
+              <span className="text-neutral-400">
+                {item.quantity} unit{item.quantity > 1 ? "s" : ""} in repair
+              </span>
             </div>
           </div>
 
@@ -577,10 +593,23 @@ const StaffMaintenance = () => {
                 <option value="">Select equipment...</option>
                 {equipmentList.map((eq) => (
                   <option key={eq.id} value={eq.id}>
-                    {eq.name}
+                    {eq.name} ({eq.available_quantity ?? 0} on hand)
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
+                Units Affected
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={flagQuantity}
+                onChange={(e) => setFlagQuantity(e.target.value)}
+                className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white focus:border-red-600 focus:outline-none"
+              />
             </div>
 
             <div>
@@ -600,10 +629,11 @@ const StaffMaintenance = () => {
 
             <div>
               <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5">
-                Observed Issue / Notes
+                Remarks *
               </label>
               <textarea
                 rows={3}
+                required
                 placeholder="e.g. Lens scratch / focus ring stuck during event ingress..."
                 value={flagIssue}
                 onChange={(e) => setFlagIssue(e.target.value)}

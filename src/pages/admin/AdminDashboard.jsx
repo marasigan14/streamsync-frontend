@@ -10,6 +10,7 @@ import {
   Boxes,
   Wrench,
   Briefcase,
+  FileText,
   Users,
   CreditCard,
   BarChart3,
@@ -29,6 +30,7 @@ import AdminBilling from "./AdminBilling";
 import Analytics from "./Analytics";
 import UserAccounts from "./UserAccounts";
 import ChatbotConfig from "./ChatbotConfig";
+import Reports from "./Reports";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -74,6 +76,7 @@ const AdminDashboard = () => {
     { id: "staff", label: "STAFF DEPLOYMENT", icon: Users },
     { id: "billing", label: "BILLING & PAYMENTS", icon: CreditCard },
     { id: "analytics", label: "ANALYTICS", icon: BarChart3 },
+    { id: "reports", label: "REPORTS", icon: FileText },
     { id: "users", label: "USER ACCOUNTS", icon: UserCog },
     { id: "chatbot", label: "CHATBOT CONFIG", icon: Bot },
   ];
@@ -154,6 +157,7 @@ const AdminDashboard = () => {
           {activeTab === "staff" && <StaffDeployment />}
           {activeTab === "billing" && <AdminBilling />}
           {activeTab === "analytics" && <Analytics />}
+          {activeTab === "reports" && <Reports />}
           {activeTab === "users" && <UserAccounts />}
           {activeTab === "chatbot" && <ChatbotConfig />}
         </main>

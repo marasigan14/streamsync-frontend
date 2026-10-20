@@ -19,8 +19,11 @@ import {
   Check,
   Edit2,
   X,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import { apiFetch, apiDownload, peso } from "../../lib/api";
 import logoImage from "../../assets/livestream-logo.png";
 import BillingPayments from "./BillingPayments";
 import ClientProfile from "./ClientProfile";
@@ -63,6 +66,67 @@ const ClientDashboard = () => {
 
   // Real bookings, loaded from the FastAPI backend (no more hardcoded samples)
   const [bookingsList, setBookingsList] = useState([]);
+
+  // Client policy: cancellations so far / blacklist
+  const [policy, setPolicy] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelPreview, setCancelPreview] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [bookingNotice, setBookingNotice] = useState("");
+
+  const fetchPolicy = async () => {
+    try {
+      setPolicy(await apiFetch("/bookings/policy/me"));
+    } catch (err) {
+      console.error("Failed to load cancellation policy status:", err);
+    }
+  };
+
+  const openCancel = async (booking) => {
+    setCancelTarget(booking);
+    setCancelReason("");
+    setCancelError("");
+    setCancelPreview(null);
+    try {
+      setCancelPreview(await apiFetch(`/bookings/${booking.id}/cancel-preview`));
+    } catch (err) {
+      setCancelError(err.message);
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    if (!cancelReason.trim()) {
+      setCancelError("Please tell us why you're cancelling.");
+      return;
+    }
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      const res = await apiFetch(`/bookings/${cancelTarget.id}/cancel`, {
+        method: "POST",
+        body: { reason: cancelReason.trim() },
+      });
+      setBookingNotice(res.message || "Booking cancelled.");
+      setCancelTarget(null);
+      fetchClientBookings();
+      fetchPolicy();
+    } catch (err) {
+      setCancelError(err.message);
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
+  const downloadContract = async (booking) => {
+    try {
+      await apiDownload(`/bookings/${booking.id}/contract`, `StreamSync-Contract-BK-${booking.id}.pdf`);
+    } catch (err) {
+      setBookingNotice(err.message);
+    }
+  };
 
   // Map real booking_status enum + tentative flag in notes -> UI status keys
   const mapStatus = (dbStatus, notes) => {
@@ -112,6 +176,7 @@ const ClientDashboard = () => {
         event_name: b.event_name || "Untitled Event",
         event_type: b.event_type || "Event",
         status: mapStatus(b.status, b.notes),
+        dbStatus: b.status,
         start_date: b.event_date || "To be scheduled",
         time: b.start_time && b.end_time ? `${b.start_time} - ${b.end_time}` : "All Day",
         venue: b.venue || "Venue TBD",
@@ -191,6 +256,7 @@ const ClientDashboard = () => {
 
       // Load real bookings from the backend regardless of name-resolution path above
       fetchClientBookings();
+      fetchPolicy();
     };
 
     // Fires once Supabase has actually finished restoring the session
@@ -505,6 +571,33 @@ const ClientDashboard = () => {
                 </p>
               </div>
 
+              {bookingNotice && (
+                <div className="bg-[#0f121a] border border-[#1b212f] rounded-2xl p-4 text-xs text-neutral-300 flex items-start justify-between gap-3">
+                  <span>{bookingNotice}</span>
+                  <button type="button" onClick={() => setBookingNotice("")} className="text-neutral-500 hover:text-white">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
+              {policy && (policy.is_blacklisted || policy.cancellation_count > 0) && (
+                <div
+                  className={`rounded-2xl p-4 text-xs flex items-start gap-3 border ${
+                    policy.is_blacklisted
+                      ? "bg-red-950/30 border-red-800/50 text-red-300"
+                      : "bg-amber-950/20 border-amber-800/40 text-amber-300"
+                  }`}
+                >
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <p>
+                    {policy.is_blacklisted
+                      ? policy.message
+                      : `You have ${policy.cancellation_count} of ${policy.cancellation_limit} allowed cancellations. ` +
+                        `Bookings released for a missed downpayment also count. At ${policy.cancellation_limit}, new bookings are blocked.`}
+                  </p>
+                </div>
+              )}
+
               {/* Status Guide */}
               <div className="bg-[#0f121a] border border-[#1b212f] p-5 rounded-2xl">
                 <p className="text-[10px] font-bold tracking-widest uppercase text-neutral-500 mb-3">
@@ -724,12 +817,23 @@ const ClientDashboard = () => {
                           </button>
                         )}
 
-                        {booking.status !== "completed" && (
+                        {["confirmed", "completed"].includes(booking.status) && (
                           <button
                             type="button"
+                            onClick={() => downloadContract(booking)}
+                            className="flex-1 sm:flex-none bg-[#090b10] hover:bg-neutral-800 text-neutral-300 hover:text-white border border-[#1b212f] text-xs font-bold uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Download size={13} /> Contract
+                          </button>
+                        )}
+
+                        {["pending", "pencil_booked", "confirmed"].includes(booking.status) && (
+                          <button
+                            type="button"
+                            onClick={() => openCancel(booking)}
                             className="flex-1 sm:flex-none bg-[#090b10] hover:bg-neutral-800 text-neutral-400 hover:text-white border border-[#1b212f] text-xs font-bold uppercase tracking-wider py-2.5 px-5 rounded-xl transition cursor-pointer"
                           >
-                            {booking.status === "draft" ? "Delete" : "Cancel"}
+                            Cancel
                           </button>
                         )}
                       </div>
@@ -884,6 +988,65 @@ const ClientDashboard = () => {
                 className="w-1/2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider transition cursor-pointer shadow-lg shadow-blue-600/30 disabled:opacity-50"
               >
                 {updatingEquipment ? "Saving Changes..." : "Submit Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel booking modal */}
+      {cancelTarget && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#0e121a] border border-[#1b212f] rounded-2xl p-6 space-y-4 text-white">
+            <div className="flex items-center justify-between border-b border-[#1b212f] pb-3">
+              <h3 className="text-xs font-black uppercase tracking-wider">Cancel Booking</h3>
+              <button type="button" onClick={() => setCancelTarget(null)} className="text-neutral-500 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-sm font-bold">{cancelTarget.event_name}</p>
+            <p className="text-xs text-neutral-400">{cancelTarget.start_date}</p>
+
+            {cancelPreview ? (
+              <div className="bg-[#090b10] border border-[#1b212f] rounded-xl p-4 text-xs space-y-1.5 text-neutral-300">
+                <p>
+                  Refund: <strong className="text-white">{peso(cancelPreview.refund_amount)}</strong>
+                </p>
+                <p className="text-neutral-500">{cancelPreview.rule}</p>
+                <p className={cancelPreview.will_blacklist ? "text-red-400 font-bold" : "text-amber-400"}>
+                  This will be cancellation {cancelPreview.count_after} of {cancelPreview.cancellation_limit}.
+                  {cancelPreview.will_blacklist
+                    ? " Your account will be blocked from making new bookings."
+                    : ""}
+                </p>
+              </div>
+            ) : (
+              !cancelError && <p className="text-xs text-neutral-500">Checking refund...</p>
+            )}
+
+            <textarea
+              rows={3}
+              placeholder="Reason for cancelling *"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 resize-none"
+            />
+            {cancelError && <p className="text-[11px] font-bold text-red-500">{cancelError}</p>}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelTarget(null)}
+                className="px-4 py-2.5 rounded-xl border border-[#1b212f] text-neutral-400 hover:text-white text-xs font-bold uppercase"
+              >
+                Keep Booking
+              </button>
+              <button
+                type="button"
+                disabled={cancelBusy}
+                onClick={confirmCancel}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-wider disabled:opacity-50"
+              >
+                {cancelBusy ? "Cancelling..." : "Confirm Cancel"}
               </button>
             </div>
           </div>
