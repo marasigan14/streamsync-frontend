@@ -396,9 +396,9 @@ const RegisterPage = () => {
                 <p className="text-neutral-400 mb-4">The following cancellation policy governs all confirmed bookings. By creating an account, you acknowledge and agree to these terms:</p>
 
                 <ol className="list-decimal pl-5 space-y-3 text-neutral-400 mb-6">
-                  <li><span className="font-bold text-white">More than 30 days before the event:</span> Full refund of downpayment, less a 5% processing fee which covers administrative and payment gateway charges already incurred.</li>
-                  <li><span className="font-bold text-white">15 to 30 days before the event:</span> 50% of the downpayment is retained by Livestream Manila to cover the opportunity cost of the reserved booking slot and the equipment and staff pre-allocation that has already been initiated.</li>
-                  <li><span className="font-bold text-white">Less than 15 days before the event:</span> The downpayment is <span className="text-red-500 font-bold">non-refundable</span>. By this point, equipment has been reserved, staff have been scheduled, and alternative bookings for the same date cannot reasonably be secured.</li>
+                  <li><span className="font-bold text-white">More than 30 days before the event:</span> <span className="text-[#22c55e] font-bold">100% refund</span> of the downpayment with no deductions, since there is still enough time to rebook the slot.</li>
+                  <li><span className="font-bold text-white">15 to 30 days before the event:</span> <span className="font-bold text-amber-400">50% refund</span> of the downpayment. The other 50% is retained by Livestream Manila to cover the reserved slot and the equipment and staff already allocated.</li>
+                  <li><span className="font-bold text-white">Less than 15 days before the event:</span> The full downpayment is <span className="text-red-500 font-bold">forfeited</span>. By this point, equipment has been reserved and withdrawn from stock, staff have been scheduled, and other bookings for the same date have been declined.</li>
                 </ol>
 
                 <div className="border border-red-900/50 bg-red-950/20 rounded-xl p-4 mb-4">

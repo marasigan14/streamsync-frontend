@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { apiFetch, todayPH } from "../../lib/api";
+import DatePicker from "../../components/DatePicker";
+import VenueMapPicker from "../../components/VenueMapPicker";
 import logoImage from "../../assets/livestream-logo.png";
 import MyBookings from "./MyBookings";
 
@@ -1157,15 +1159,40 @@ const BookingForm = () => {
   const [eventType, setEventType] = useState("Webinar");
   const [customEventType, setCustomEventType] = useState("");
   const [clientType, setClientType] = useState("Corporate");
-  const [startDate, setStartDate] = useState(searchParams.get("start") || "");
-  const [endDate, setEndDate] = useState(searchParams.get("end") || "");
+  // Dates from the link (?start=...&end=...) are ignored if they are already in the past.
+  const [startDate, setStartDate] = useState(() => {
+    const d = searchParams.get("start") || "";
+    return d && d >= todayPH() ? d : "";
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = searchParams.get("end") || "";
+    return d && d >= todayPH() ? d : "";
+  });
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("17:00");
   const [venue, setVenue] = useState("");
-  const [venueDistance, setVenueDistance] = useState("15"); // Distance in km from Culiat, QC HQ
+  // Road distance in km from our office (444 Sta. Felicia St., San Antonio Homes, Culiat, QC),
+  // filled in automatically from the venue address.
+  const [venueDistance, setVenueDistance] = useState("");
   // Map lookup: venue address -> road distance (km) from the office
   const [distanceLookup, setDistanceLookup] = useState({ status: "idle", text: "" });
   const lastLookedUp = useRef("");
+  // Pin dropped on the map picker: { lat, lng, address, distanceKm, transportFee }
+  const [venuePin, setVenuePin] = useState(null);
+  const [showMap, setShowMap] = useState(false);
+
+  const handlePinConfirm = (pin) => {
+    setVenuePin(pin);
+    // Keep the venue name the client typed (e.g. "PICC Plenary Hall"); fill it in if empty.
+    const text = venue.trim() ? venue : pin.address;
+    lastLookedUp.current = text.trim(); // the pin's distance wins over a text lookup
+    setVenue(text);
+    setVenueDistance(String(pin.distanceKm));
+    setDistanceLookup({
+      status: "ok",
+      text: `Pinned on map: ${pin.distanceKm} km by road to ${pin.address}`,
+    });
+  };
   const [estimatedGuests, setEstimatedGuests] = useState("100");
   const [specialNotes, setSpecialNotes] = useState("");
 
@@ -1512,6 +1539,14 @@ const BookingForm = () => {
     }
   };
 
+  // Measure automatically a moment after the client stops typing the venue.
+  useEffect(() => {
+    if (venuePin || venue.trim().length < 8) return undefined;
+    const timer = setTimeout(() => lookupDistance(venue), 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue]);
+
   const computeLogisticsFee = (distKm) => {
     const km = parseFloat(distKm) || 0;
     if (km <= 0) return 0;
@@ -1745,6 +1780,8 @@ const BookingForm = () => {
         venue: venue,
         venue_distance: parseFloat(venueDistance) || 0,
         distance_km: parseFloat(venueDistance) || null, // saved on the booking; adds the transport fee
+        venue_lat: venuePin ? venuePin.lat : null,
+        venue_lng: venuePin ? venuePin.lng : null,
         estimated_guests: estimatedGuests ? parseInt(estimatedGuests) : null,
         special_notes: specialNotes,
         services: serviceTitles,
@@ -2105,15 +2142,14 @@ const BookingForm = () => {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
                     Start Date *
                   </label>
-                  <input
-                    type="date"
-                    min={todayPH()}
+                  <DatePicker
                     value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      if (endDate && e.target.value > endDate) setEndDate("");
+                    min={todayPH()}
+                    placeholder="Select start date"
+                    onChange={(d) => {
+                      setStartDate(d);
+                      if (endDate && d > endDate) setEndDate("");
                     }}
-                    className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
                   />
                 </div>
 
@@ -2121,12 +2157,13 @@ const BookingForm = () => {
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5">
                     End Date (Optional for multi-day)
                   </label>
-                  <input
-                    type="date"
-                    min={startDate || todayPH()}
+                  <DatePicker
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-red-600"
+                    min={startDate || todayPH()}
+                    rangeStart={startDate}
+                    clearable
+                    placeholder="Same day (optional)"
+                    onChange={setEndDate}
                   />
                 </div>
               </div>
@@ -2166,22 +2203,42 @@ const BookingForm = () => {
                     type="text"
                     placeholder="e.g. PICC Plenary Hall, Pasay City"
                     value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    onBlur={() => lookupDistance()}
+                    onChange={(e) => {
+                      setVenue(e.target.value);
+                      if (venuePin) {
+                        // Typing a different place after pinning: measure from the text again.
+                        setVenuePin(null);
+                        lastLookedUp.current = "";
+                      }
+                    }}
+                    onBlur={() => !venuePin && lookupDistance()}
                     className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600"
                   />
-                  <div className="flex items-center gap-3 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowMap(true)}
+                      className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg cursor-pointer shrink-0"
+                    >
+                      <MapPin size={12} /> {venuePin ? "Change pin" : "Pin on map"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
                         lastLookedUp.current = "";
+                        setVenuePin(null);
                         lookupDistance();
                       }}
                       disabled={distanceLookup.status === "loading" || venue.trim().length < 5}
                       className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:text-red-400 disabled:opacity-40 cursor-pointer shrink-0"
                     >
-                      {distanceLookup.status === "loading" ? "Measuring..." : "Get distance from map"}
+                      {distanceLookup.status === "loading" ? "Measuring..." : "Recalculate distance"}
                     </button>
+                    {!distanceLookup.text && (
+                      <span className="text-[10px] text-neutral-500">
+                        Distance is measured by road from our office in Culiat, Quezon City.
+                      </span>
+                    )}
                     {distanceLookup.text && (
                       <span
                         className={`text-[10px] ${
@@ -2197,14 +2254,17 @@ const BookingForm = () => {
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1.5 flex items-center justify-between">
                     <span>Est. Distance (km)</span>
-                    <span className="text-[9px] text-neutral-500 lowercase font-normal">
-                      from Culiat HQ
+                    <span
+                      className="text-[9px] text-neutral-500 font-normal normal-case"
+                      title="444 Sta. Felicia St., San Antonio Homes, Culiat, Quezon City 1128"
+                    >
+                      from our office
                     </span>
                   </label>
                   <input
                     type="number"
                     min="1"
-                    placeholder="e.g. 15"
+                    placeholder="Auto from venue"
                     value={venueDistance}
                     onChange={(e) => {
                       setVenueDistance(e.target.value);
@@ -2639,7 +2699,7 @@ const BookingForm = () => {
                   </span>
                   <span className="text-neutral-300">
                     Logistics & Vehicle Deployment ({venueDistance || 0} km from
-                    Culiat QC HQ)
+                    our Culiat, QC office)
                   </span>
                 </div>
                 <span className="font-mono text-neutral-300 font-bold">
@@ -2991,22 +3051,30 @@ const BookingForm = () => {
 
             <div className="bg-[#090b10] border border-[#1e2638] rounded-xl p-5 text-xs text-neutral-400 leading-relaxed space-y-3 font-normal">
               <p>
-                Cancellations made <strong>30 days or more</strong> prior to the
-                event date will receive a full refund of the downpayment minus a
-                10% administrative fee.
+                Cancellations made <strong>more than 30 days</strong> before the
+                event date receive a <strong>100% refund</strong> of the
+                downpayment with no deductions.
               </p>
               <p>
-                Cancellations made <strong>15 to 29 days</strong> prior will
-                receive a 50% refund of the downpayment.
+                Cancellations made <strong>15 to 30 days</strong> before the
+                event receive a <strong>50% refund</strong> of the downpayment.
               </p>
               <p>
                 Cancellations made <strong>less than 15 days</strong> before the
-                event are non-refundable. Rebooking is subject to equipment
-                availability and may incur a rescheduling fee.
+                event forfeit the full downpayment. A no-show (not cancelling and
+                not attending) also forfeits the full downpayment.
               </p>
               <p>
-                In the event of weather emergencies or force majeure, bookings
-                can be rescheduled without penalty within 90 days.
+                Every cancellation, including a booking released for a missed
+                downpayment, is recorded on your account. After{" "}
+                <strong>3 cancellations</strong>, new bookings are put on hold
+                until reviewed by Livestream Manila.
+              </p>
+              <p>
+                If Livestream Manila must cancel due to force majeure (severe
+                weather, natural disasters, government-declared quarantine, or
+                critical equipment failure), you receive a full refund within 5
+                business days and rebooking priority at no extra cost.
               </p>
             </div>
 
@@ -3292,6 +3360,12 @@ const BookingForm = () => {
       <button className="fixed bottom-8 right-8 bg-[#ff0000] hover:bg-red-700 text-white p-4 rounded-full shadow-[0_0_18px_rgba(255,0,0,0.45)] transition-all z-50 cursor-pointer">
         <MessageSquare size={24} />
       </button>
+      <VenueMapPicker
+        open={showMap}
+        onClose={() => setShowMap(false)}
+        initial={venuePin}
+        onConfirm={handlePinConfirm}
+      />
     </div>
   );
 };

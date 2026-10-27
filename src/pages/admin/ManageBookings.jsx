@@ -125,7 +125,7 @@ const ManageBookings = () => {
   // Cancel modal
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
-  const [cancelClientRequested, setCancelClientRequested] = useState(false);
+  const [cancelType, setCancelType] = useState("admin"); // "client" | "force_majeure" | "admin"
 
   // Cancellation logs (real data from booking_cancellations)
   const [cancellations, setCancellations] = useState([]);
@@ -248,14 +248,15 @@ const ManageBookings = () => {
   const openCancel = (bkg) => {
     setCancelTarget(bkg);
     setCancelReason("");
-    setCancelClientRequested(false);
+    setCancelType("admin");
   };
 
   const confirmCancel = async () => {
     if (!cancelTarget) return;
     const extra =
-      `&reason=${encodeURIComponent(cancelReason.trim() || "Cancelled by admin")}` +
-      `&client_requested=${cancelClientRequested}`;
+      `&reason=${encodeURIComponent(cancelReason.trim() || (cancelType === "force_majeure" ? "Force majeure" : "Cancelled by admin"))}` +
+      `&client_requested=${cancelType === "client"}` +
+      `&force_majeure=${cancelType === "force_majeure"}`;
     const id = cancelTarget.id;
     setCancelTarget(null);
     await updateBookingStatus(id, "cancelled", extra);
@@ -970,18 +971,32 @@ const ManageBookings = () => {
               onChange={(e) => setCancelReason(e.target.value)}
               className="w-full bg-[#090b10] border border-[#1e2638] rounded-xl px-4 py-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-red-600 resize-none"
             />
-            <label className="flex items-start gap-2 text-[11px] text-neutral-300 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={cancelClientRequested}
-                onChange={(e) => setCancelClientRequested(e.target.checked)}
-                className="accent-red-600 mt-0.5"
-              />
-              <span>
-                The client asked for this cancellation (counts toward their {cancelLimit}-cancellation limit). Leave
-                unticked if Livestream Manila is cancelling.
-              </span>
-            </label>
+            <div className="space-y-2">
+              {[
+                ["client", "Client requested it", `Refund by the days-left rule. Counts toward the client's ${cancelLimit}-cancellation limit.`],
+                ["force_majeure", "Force majeure", "Weather, disaster, quarantine or unresolvable equipment failure. Full downpayment refund; not counted."],
+                ["admin", "Other admin decision", "Refund by the days-left rule. Not counted against the client."],
+              ].map(([id, title, help]) => (
+                <label
+                  key={id}
+                  className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer text-[11px] ${
+                    cancelType === id ? "border-red-600 bg-red-950/20" : "border-[#1b212f] bg-[#090b10]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="cancel-type"
+                    checked={cancelType === id}
+                    onChange={() => setCancelType(id)}
+                    className="accent-red-600 mt-0.5"
+                  />
+                  <span>
+                    <span className="block font-bold text-white">{title}</span>
+                    <span className="text-neutral-400">{help}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
